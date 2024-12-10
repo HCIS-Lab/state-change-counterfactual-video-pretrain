@@ -20,6 +20,7 @@ from PIL import Image
 from torchvision import transforms
 import random
 from tqdm import tqdm
+import numpy as np
 
 class EgoClip_CF(TextVideoDataset):
     def _load_metadata(self):
@@ -116,9 +117,17 @@ class EgoClip_CF(TextVideoDataset):
 
         return sample['clip_text'], noun_vec, verb_vec
 
-    def _get_state_features(caption):
+    def _get_state_features(self, video_filename):
+        # example filename: 0e3ee603-7b9d-459d-9006-65285f3efd23_narration_pass_2_69
+        
+        symlink_dir = "language_features/symlinks" # make this a self.symlink_dir on init function
 
-        return before, after, cf1, cf2, cf3
+        features_path = os.path.join(symlink_dir, video_filename)
+        features = np.load(features_path, allow_pickle=True)
+        features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
+
+        # return before, after, cf1, cf2, cf3
+        return features[0, 0, :], features[1, 0, :], features[2, 0, :], features[3, 0, :], features[4, 0, :], features[5, 0, :]
 
     def _get_train_item(self, item):
         item = item % len(self.metadata)
