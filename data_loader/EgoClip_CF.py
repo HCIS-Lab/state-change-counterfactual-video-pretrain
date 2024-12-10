@@ -119,6 +119,8 @@ class EgoClip_CF(TextVideoDataset):
 
     def _get_state_features(self, video_filename):
         # example filename: 0e3ee603-7b9d-459d-9006-65285f3efd23_narration_pass_2_69
+        # the above was generated from egoclip.csv as follows:
+        #     single_vid = df.iloc[j, 0] + '_' + df.iloc[j, 2] + '_' + str(df.iloc[j, 3])
         
         symlink_dir = "language_features/symlinks" # make this a self.symlink_dir on init function
 
