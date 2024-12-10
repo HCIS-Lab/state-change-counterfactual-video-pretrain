@@ -13,6 +13,7 @@ from torch.utils.data.dataloader import default_collate
 from base import BaseDataLoaderExplicitSplit, BaseMultiDataLoader, \
     DistBaseDataLoaderExplicitSplit, MultiDistBaseDataLoaderExplicitSplit
 from data_loader.EgoClip_EgoMCQ_dataset import EgoClip_EgoMCQ
+from data_loader.EgoClip_CF import EgoClip_CF
 from data_loader.EgoAggregation_dataset import EgoAggregation
 from data_loader.EpicKitchens_MIR_dataset import MultiInstanceRetrieval
 from data_loader.HowTo100M_VC_dataset import HowTo100MVideoClassification
@@ -78,6 +79,8 @@ def dataset_loader(dataset_name,
         dataset = ConceptualCaptions3M(**kwargs)
     elif dataset_name == "EgoClip":
         dataset = EgoClip_EgoMCQ(**kwargs)
+    elif dataset_name == "EgoClip_CF":
+        dataset = EgoClip_EgoClip_CF(**kwargs)
     elif dataset_name == "EgoAggregation":
         dataset = EgoAggregation(**kwargs)
 

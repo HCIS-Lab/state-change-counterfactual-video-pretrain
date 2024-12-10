@@ -54,7 +54,6 @@ def init_dataloaders(config, module_data):
         data_loader = [config.initialize("data_loader", module_data)]
         config['data_loader']['args'] = replace_nested_dict_item(config['data_loader']['args'], 'split', 'val')
         config['data_loader']['args'] = replace_nested_dict_item(config['data_loader']['args'], 'batch_size', 1)
-        valid_data_loader = [config.initialize("data_loader", module_data)]
     elif isinstance(config["data_loader"], list):
         data_loader = [config.initialize('data_loader', module_data, index=idx) for idx in
                        range(len(config['data_loader']))]
@@ -64,12 +63,11 @@ def init_dataloaders(config, module_data):
             dl_cfg['args'] = replace_nested_dict_item(dl_cfg['args'], 'batch_size', 1)
             new_cfg_li.append(dl_cfg)
         config._config['data_loader'] = new_cfg_li
-        valid_data_loader = [config.initialize('data_loader', module_data, index=idx) for idx in
-                             range(len(config['data_loader']))]
+
     else:
         raise ValueError("Check data_loader config, not correct format.")
 
-    return data_loader, valid_data_loader
+    return data_loader
 
 
 def find_free_port():
@@ -266,10 +264,9 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
     print('ARGS.RANK NOW IS {}'.format(args.rank))
     print('CONFIG NOW IS {}'.format(config))
     config.args = args
-    data_loader, valid_data_loader = init_dataloaders(config, module_data)
+    data_loader = init_dataloaders(config, module_data)
     if args.rank == 0:
         print('Train dataset: ', [x.n_samples for x in data_loader], ' samples')
-        print('Val dataset: ', [x.n_samples for x in valid_data_loader], ' samples')
     # build model architecture, then print to console
 
     model = config.initialize('arch', module_arch)
@@ -332,7 +329,6 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
     trainer = Multi_Trainer_dist(args, model, loss, metrics, optimizer,
                       config=config,
                       data_loader=data_loader,
-                      valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler,
                       visualizer=visualizer,
                       writer=writer,
@@ -384,48 +380,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.print_freq == 0:
             progress.print(i)
-
-
-def validate(val_loader, model, criterion, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(len(val_loader), batch_time, losses, top1, top5,
-                             prefix='Test: ')
-
-    # switch to evaluate mode
-    model.eval()
-
-    with torch.no_grad():
-        end = time.time()
-        for i, (input, target) in enumerate(val_loader):
-            if args.gpu is not None:
-                input = input.cuda(args.gpu, non_blocking=True)
-            target = target.cuda(args.gpu, non_blocking=True)
-
-            # compute output
-            output = model(input)
-            loss = criterion(output, target)
-
-            # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
-            losses.update(loss.item(), input.size(0))
-            top1.update(acc1[0], input.size(0))
-            top5.update(acc5[0], input.size(0))
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
-
-            if i % args.print_freq == 0:
-                progress.print(i)
-
-        # TODO: this should also be done with the ProgressMeter
-        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-              .format(top1=top1, top5=top5))
-
-    return top1.avg
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
@@ -482,21 +436,6 @@ def adjust_learning_rate(optimizer, epoch, args):
         param_group['lr'] = lr
 
 
-def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = target.size(0)
-
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
 
 
 if __name__ == '__main__':

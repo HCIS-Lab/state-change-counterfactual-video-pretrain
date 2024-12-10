@@ -20,32 +20,28 @@ from PIL import Image
 from torchvision import transforms
 import random
 from tqdm import tqdm
-import numpy as np
 
-class EgoClip_CF(TextVideoDataset):
+class EgoClip_EgoMCQ(TextVideoDataset):
     def _load_metadata(self):
         split_files = {
             'train': 'egoclip.csv',
-
+            'val': 'egomcq.json',
+            'test': 'egomcq.json'
         }
         target_split_fp = split_files[self.split]
 
         self.chunk_sec = 600  # Each segment is up to 600s
-        self.noun_dim = 582  # num of nouns of ego4d taxonomy dictionary
-        self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
+        # self.noun_dim = 582  # num of nouns of ego4d taxonomy dictionary
+        # self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
             self.frame_sample = 'rand'
-
-            with open('/N/project/ego4d_vlm/narration/states', "r") as json_file:
-                self.state_metadata = json.load(json_file)
-
 
             append_summary_baseline = False #TODO: Move to config
             if append_summary_baseline:
                 summary_target_splits_fp = 'egosummary_full.csv'
-                self.summary_metadata = pd.read_csv(os.path.join(self.meta_dir, summary_target_splits_fp), sep='\t', on_bad_lines='skip')
+                self.summary_metadata = pd.read_csv(os.path.join(self.meta_dir, summary_target_splits_fp), sep='\t',error_bad_lines=False)
                 print('Assigning summary duration to one of the clips...')
                 for summary_idx in range(len(self.summary_metadata)):
                     self.summary_metadata.loc[summary_idx, "clip_start"] = random.uniform(0.0, self.summary_metadata.iloc[summary_idx]['clip_start']-4.0)
@@ -59,6 +55,10 @@ class EgoClip_CF(TextVideoDataset):
                 self.metadata['chunk_id'] = self.metadata['chunk_id'].astype(str)
                 self.metadata['segment_id'] = self.metadata['video_uid'] + '_' + self.metadata['chunk_id']
 
+        elif self.split in ['val', 'test']:
+            self.frame_sample = 'uniform'
+            with open(os.path.join(self.meta_dir, target_split_fp), 'r') as load_f:
+                self.metadata = json.load(load_f)
 
     def _get_video_path(self, sample):
         video_uid = sample['video_uid']
@@ -118,27 +118,12 @@ class EgoClip_CF(TextVideoDataset):
 
         return sample['clip_text'], noun_vec, verb_vec
 
-    def _get_state_features(self, video_filename):
-        # example filename: 0e3ee603-7b9d-459d-9006-65285f3efd23_narration_pass_2_69
-        # the above was generated from egoclip.csv as follows:
-        #     single_vid = df.iloc[j, 0] + '_' + df.iloc[j, 2] + '_' + str(df.iloc[j, 3])
-        
-        symlink_dir = "language_features/symlinks" # make this a self.symlink_dir on init function
-
-        features_path = os.path.join(symlink_dir, video_filename)
-        features = np.load(features_path, allow_pickle=True)
-        features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
-
-        # return before, after, cf1, cf2, cf3
-        return features[0, 0, :], features[1, 0, :], features[2, 0, :], features[3, 0, :], features[4, 0, :], features[5, 0, :]
-
     def _get_train_item(self, item):
         item = item % len(self.metadata)
         sample = self.metadata.iloc[item]
         video_fp, video_sec, bound_sec = self._get_video_path(sample)
         caption, noun_vec, verb_vec = self._get_caption(sample)
-        before, after, cf1, cf2, cf3 = self._get_state_features(caption)
-        final = self._get_video_frames(video_fp, video_sec, caption)
+        final = self._get_video_frames(video_fp, video_sec, bound_sec)
 
         # Scene-aware negative sampling
         if self.neg_param:
@@ -149,20 +134,43 @@ class EgoClip_CF(TextVideoDataset):
             final_neg = self._get_video_frames(video_fp_neg, video_sec_neg, bound_sec_neg)
 
         meta_arr = {'raw_captions': caption, 'paths': video_fp, 'dataset': self.dataset_name}
-        # if self.neg_param:
-        #     return {'video': final, 'text': caption,
-        #             'video_neg': final_neg, 'text_neg': caption_neg,
-        #             'meta': meta_arr,
-        #             'noun_vec': noun_vec, 'verb_vec': verb_vec,
-        #             'noun_vec_neg': noun_vec_neg, 'verb_vec_neg': verb_vec_neg}
-        # else:
-        #     return {'video': final, 'text': caption,
-        #         'meta': meta_arr,
-        #         'noun_vec': noun_vec, 'verb_vec': verb_vec}
-
-        return {'video': final, 'text': caption,
+        if self.neg_param:
+            return {'video': final, 'text': caption,
+                    'video_neg': final_neg, 'text_neg': caption_neg,
+                    'meta': meta_arr,
+                    'noun_vec': noun_vec, 'verb_vec': verb_vec,
+                    'noun_vec_neg': noun_vec_neg, 'verb_vec_neg': verb_vec_neg}
+        else:
+            return {'video': final, 'text': caption,
                 'meta': meta_arr,
-                'before': before, 'after': after, 'cf1': cf1, 'cf2': cf2, 'cf3': cf3}
+                'noun_vec': noun_vec, 'verb_vec': verb_vec}
+
+    def _get_val_item(self, item):
+        item = item % len(self.metadata)
+        itemMCQ = self.metadata[str(item)]
+
+        answerIndex = itemMCQ['answer']
+        sampleQuery = itemMCQ['query']
+        textQuery, _, _ = self._get_caption(sampleQuery)
+
+        sampleOptions = itemMCQ['choices']
+        num_options = len(sampleOptions)
+        textOptions = []
+        videoOptions = torch.zeros([num_options, self.video_params['num_frames'], 3, self.video_params['input_res'],
+                             self.video_params['input_res']])
+
+        for id, option in enumerate(sampleOptions):
+            sampleOptioni = sampleOptions[option]
+            video_fp, video_sec, bound_sec = self._get_video_path(sampleOptioni)
+            caption, _, _ = self._get_caption(sampleOptioni)
+            textOptions.append(caption)
+
+            imgs = self._get_video_frames(video_fp, video_sec, bound_sec)
+            videoOptions[id] = imgs
+
+        type =  itemMCQ['types']    # 1 for inter; 2 for intra
+        data = {'video': videoOptions, 'text': textQuery, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
+        return data
 
     def __len__(self):
         return len(self.metadata)
@@ -170,6 +178,8 @@ class EgoClip_CF(TextVideoDataset):
     def __getitem__(self, item):
         if self.split == 'train':
             return self._get_train_item(item)
+        elif self.split in ['val', 'test']:
+            return self._get_val_item(item)
 
 if __name__ == "__main__":
     kwargs = dict(

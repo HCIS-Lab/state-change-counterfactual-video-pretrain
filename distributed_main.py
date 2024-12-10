@@ -42,6 +42,7 @@ from utils.util import replace_nested_dict_item, load_checkpoint_after_preemptio
 
 from run.distributed_epic import main_worker as epic_main_worker
 from run.distributed_egoclip import main_worker as egoclip_main_worker
+from run.distributed_egoclip_cf import main_worker as egoclip_main_worker_cf
 from run.distributed_charades import main_worker as charades_main_worker
 from run.distributed_egoaggregation import main_worker as egoaggregation_main_worker
 from run.distributed_howto100m import main_worker as howto100m_main_worker
@@ -138,11 +139,11 @@ def main():
     if recovered_checkpoint is not None:
         config["arch"]["args"]["load_checkpoint"] = recovered_checkpoint
         config["trainer"]["start_epoch"] = recovered_epoch + 1
-    if args.experiment == "epic_mir":
-        # Only for EPIC-MIR
-        if config["loss"]["args"]["margin"] != args.epic_loss_margin:
-            print('Different margin in config and command line args. Setting command line margin value: {}...'.format(args.epic_loss_margin))
-            config["loss"]["args"]["margin"] = args.epic_loss_margin
+    # if args.experiment == "epic_mir":
+    #     # Only for EPIC-MIR
+    #     if config["loss"]["args"]["margin"] != args.epic_loss_margin:
+    #         print('Different margin in config and command line args. Setting command line margin value: {}...'.format(args.epic_loss_margin))
+    #         config["loss"]["args"]["margin"] = args.epic_loss_margin
     ex.add_config(config._config)
     ##########################
 
@@ -208,6 +209,8 @@ def main():
             mp.spawn(epic_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
         elif args.experiment == "egoclip":
             mp.spawn(egoclip_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
+        elif args.experiment == "egoclip_cf":
+            mp.spawn(egoclip_main_worker_cf, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
         elif args.experiment == "egoaggregation":
             mp.spawn(egoaggregation_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
         elif args.experiment == "charades":

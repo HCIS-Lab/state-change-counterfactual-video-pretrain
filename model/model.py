@@ -33,16 +33,7 @@ class FrozenInTime(BaseModel):
         self.video_params = video_params
         self.text_params = text_params
         self.load_temporal_fix = load_temporal_fix
-        if not text_params['pretrained']:
-            raise NotImplementedError("Huggingface text models require pretrained init.")
 
-        # pdb.set_trace()
-        if self.text_params['model'].startswith('distilbert'):
-            self.text_model = AutoModel.from_pretrained('distilbert-base-uncased',
-                   cache_dir='pretrained/distilbert-base-uncased')
-        else:
-            self.text_model = AutoModel.from_pretrained(text_params['model'])
-        self.text_model.train()
 
         pretrained = video_params['pretrained']
         if video_params['model'] == "SpaceTimeTransformer":
@@ -55,7 +46,7 @@ class FrozenInTime(BaseModel):
             vit_init = video_params.get('vit_init', 'imagenet-21k')
             if arch_config == 'base_patch16_224':
                 # vit_model = timm.models.vision_transformer.vit_base_patch16_224(pretrained=pretrained)
-                vit_model = torch.load("pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
+                vit_model = torch.load("/N/project/ego4d_vlm/state-aware-video-pretrain/pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 model = SpaceTimeTransformer(num_frames=num_frames,
                                             drop_rate=drop_rate,
                                             attn_drop_rate=attn_drop_rate,
@@ -86,9 +77,7 @@ class FrozenInTime(BaseModel):
         #     nn.ReLU(inplace=True),
         #     nn.Linear(786, 1059)
         # )
-        self.head_ht100m_linear_probe = nn.Sequential(
-            nn.Linear(projection_dim, 100)
-        )
+
 
         #EPIC-KITCHENS anticipation classification head
         # self.head_epic_kitchens = nn.Sequential(
@@ -99,19 +88,17 @@ class FrozenInTime(BaseModel):
 
         # Project to a common embedding
         if projection == 'minimal':
-            txt_proj = nn.Sequential(nn.ReLU(),
-                                     nn.Linear(self.text_model.config.hidden_size, projection_dim),
-                                     )
+            # txt_proj = nn.Sequential(nn.ReLU(),
+            #                          nn.Linear(self.text_model.config.hidden_size, projection_dim),
+            #                          )
 
             vid_proj = nn.Sequential(
                 nn.Linear(ftr_dim, projection_dim)
             )
         elif projection == '':
-            txt_proj = nn.Identity()
             vid_proj = nn.Identity()
         else:
             raise NotImplementedError
-        self.txt_proj = txt_proj
         self.vid_proj = vid_proj
 
         if aggregation_params is not None and aggregation_params['do_aggregation']:
@@ -157,7 +144,7 @@ class FrozenInTime(BaseModel):
             # If aggregated_text is present in the dict, the model should always return the
             # aggregated features. If clip-level, return original text_embeddings
             # Text parent embedding should always come from 'aggregated_text'
-            text_stacked_embeddings = self.compute_text(data['aggregated_text'])
+            text_stacked_embeddings = data['aggregated_text']
         else:
             text_stacked_embeddings = None #Only in val
 
@@ -183,29 +170,6 @@ class FrozenInTime(BaseModel):
     def compute_video_aggregation(self, video_embeddings, batch_size):
         # Needed because we want to do aggregation separately as well
         return self.aggregation(video_embeddings, batch_size)
-
-    def compute_text(self, text_data):
-        if self.text_params['model'].startswith('bert'):
-            text_embeddings = self.text_model(text_data['input_ids'], attention_mask=text_data['attention_mask'])[
-                'pooler_output']
-        elif self.text_params['model'].startswith('distilbert'):
-            text_embeddings = self.text_model(**text_data).last_hidden_state[:, 0, :]
-        else:
-            raise NotImplementedError
-        text_embeddings = self.txt_proj(text_embeddings)
-        return text_embeddings
-
-    def compute_text_tokens(self, text_data):
-        if self.text_params['model'].startswith('bert'):
-            text_embeddings = self.text_model(text_data['input_ids'], attention_mask=text_data['attention_mask'])[
-                'pooler_output']    # not implement for bert
-        elif self.text_params['model'].startswith('distilbert'):
-            text_embeddings = self.text_model(**text_data).last_hidden_state
-        else:
-            raise NotImplementedError
-
-        text_embeddings = self.txt_proj(text_embeddings)
-        return text_embeddings
 
     def compute_video(self, video_data):
         video_embeddings = self.video_model(video_data)
