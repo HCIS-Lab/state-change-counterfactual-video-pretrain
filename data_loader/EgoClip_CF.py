@@ -38,7 +38,7 @@ class EgoClip_CF(TextVideoDataset):
             self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
             self.frame_sample = 'rand'
 
-            with open('/N/project/ego4d_vlm/narration/states', "r") as json_file:
+            with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
                 self.state_metadata = json.load(json_file)
 
 
@@ -125,7 +125,7 @@ class EgoClip_CF(TextVideoDataset):
         
         symlink_dir = "language_features/symlinks" # make this a self.symlink_dir on init function
 
-        features_path = os.path.join(symlink_dir, video_filename)
+        features_path = os.path.join(symlink_dir, video_filename, '.npy')
         features = np.load(features_path, allow_pickle=True)
         features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
 
