@@ -125,7 +125,7 @@ class EgoClip_CF(TextVideoDataset):
         
         symlink_dir = "language_features/symlinks_v2" # make this a self.symlink_dir on init function
 
-        features_path = os.path.join(symlink_dir, video_filename+'.npy')
+        features_path = os.path.join(symlink_dir, video_filename)
         features = np.load(features_path, allow_pickle=True)
         features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
 
