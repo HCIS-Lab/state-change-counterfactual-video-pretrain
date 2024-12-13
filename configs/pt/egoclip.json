@@ -63,7 +63,7 @@
     "trainer": {
         "epochs": 10,
         "max_samples_per_epoch": 500000,
-        "save_dir": "results/EgoClip_4f",
+        "save_dir": "results/EgoClip_cf",
         "save_period": 1,
         "verbosity": 2,
         "monitor": "min val_loss_0",

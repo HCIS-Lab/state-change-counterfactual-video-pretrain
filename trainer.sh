@@ -21,4 +21,4 @@ module load conda
 source ~/.bashrc
 conda activate hiervl
 nvidia-smi
-srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/egoclip.json --experiment egoclip_cf
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/egoclip_cf.json --experiment egoclip_cf

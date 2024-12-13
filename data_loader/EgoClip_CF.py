@@ -25,7 +25,7 @@ import numpy as np
 class EgoClip_CF(TextVideoDataset):
     def _load_metadata(self):
         split_files = {
-            'train': 'egoclip.csv',
+            'train': 'egoclip_update.csv',
 
         }
         target_split_fp = split_files[self.split]
@@ -40,7 +40,7 @@ class EgoClip_CF(TextVideoDataset):
 
             with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
                 self.state_metadata = json.load(json_file)
-
+            self.metadata = self.metadata[self.metadata['clip_text'].isin(self.state_metadata.keys())].reset_index(drop=True)
 
             append_summary_baseline = False #TODO: Move to config
             if append_summary_baseline:
@@ -125,7 +125,7 @@ class EgoClip_CF(TextVideoDataset):
         
         symlink_dir = "language_features/symlinks" # make this a self.symlink_dir on init function
 
-        features_path = os.path.join(symlink_dir, video_filename, '.npy')
+        features_path = os.path.join(symlink_dir, video_filename+'.npy')
         features = np.load(features_path, allow_pickle=True)
         features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
 

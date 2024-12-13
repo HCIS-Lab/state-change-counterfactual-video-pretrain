@@ -19,10 +19,9 @@ from model.video_transformer import SpaceTimeTransformer
 from model.vit import VisionTransformer
 from utils.util import state_dict_data_parallel_fix
 
-class FrozenInTime(BaseModel):
+class CF(BaseModel):
     def __init__(self,
                  video_params,
-                 text_params,
                  aggregation_params=None,
                  projection_dim=256,
                  load_checkpoint=None,
@@ -31,18 +30,10 @@ class FrozenInTime(BaseModel):
         super().__init__()
 
         self.video_params = video_params
-        self.text_params = text_params
         self.load_temporal_fix = load_temporal_fix
         if not text_params['pretrained']:
             raise NotImplementedError("Huggingface text models require pretrained init.")
 
-        # pdb.set_trace()
-        if self.text_params['model'].startswith('distilbert'):
-            self.text_model = AutoModel.from_pretrained('distilbert-base-uncased',
-                   cache_dir='pretrained/distilbert-base-uncased')
-        else:
-            self.text_model = AutoModel.from_pretrained(text_params['model'])
-        self.text_model.train()
 
         pretrained = video_params['pretrained']
         if video_params['model'] == "SpaceTimeTransformer":
@@ -56,6 +47,7 @@ class FrozenInTime(BaseModel):
             if arch_config == 'base_patch16_224':
                 # vit_model = timm.models.vision_transformer.vit_base_patch16_224(pretrained=pretrained)
                 vit_model = torch.load("pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
+                vit_model = torch.load("/N/project/ego4d_vlm/state-aware-video-pretrain/pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 model = SpaceTimeTransformer(num_frames=num_frames,
                                             drop_rate=drop_rate,
                                             attn_drop_rate=attn_drop_rate,

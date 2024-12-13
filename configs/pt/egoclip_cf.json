@@ -1,8 +1,8 @@
 {
-    "name": "EgoClip_4f",
+    "name": "EgoClip_CF",
     "n_gpu": 8,
     "arch": {
-        "type": "FrozenInTime",
+        "type": "CF",
         "args": {
             "video_params": {
                 "model": "SpaceTimeTransformer",
