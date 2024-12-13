@@ -123,7 +123,7 @@ class EgoClip_CF(TextVideoDataset):
         # the above was generated from egoclip.csv as follows:
         #     single_vid = df.iloc[j, 0] + '_' + df.iloc[j, 2] + '_' + str(df.iloc[j, 3])
         
-        symlink_dir = "language_features/symlinks" # make this a self.symlink_dir on init function
+        symlink_dir = "language_features/symlinks_v2" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, video_filename+'.npy')
         features = np.load(features_path, allow_pickle=True)
