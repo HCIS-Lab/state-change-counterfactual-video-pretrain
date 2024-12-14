@@ -15,6 +15,7 @@ from base.base_dataset import TextVideoDataset
 from data_loader.transforms import init_transform_dict, init_video_transform_dict
 
 import torch
+import numpy as np
 from PIL import Image
 from torchvision import transforms
 
@@ -175,9 +176,28 @@ class EgoAggregation(TextVideoDataset):
             final_frames.append(frames_clip)
         return torch.stack(final_frames)
         #print('Overall : {}'.format(final.shape))
-
-    def _get_summary_cf_feature(caption):
+    
+    @staticmethod
+    def _parse_summary(narration):
+        assert type(narration) == str
         
+        clean_filename =  "".join(x for x in narration if x.isalnum())
+        if clean_filename[0].isnumeric():
+            clean_filename = '_' + clean_filename
+
+        return clean_filename + '.npy'
+        
+    def _get_summary_cf_feature(self, caption):
+        
+        embedding_dir = "language_features/summary_symlinks_v2" # make this a self.embedding_dir on init function
+
+        features_path = os.path.join(embedding_dir, self._parse_summary(caption))
+        features = np.load(features_path, allow_pickle=True)
+        features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
+
+        # return [21, embed_dim]
+        # index 0 is summary feature, the other 20 entries are 10 order CF and 10 key CF features (in that order)
+        return features[0, :, :]
 
     def _get_train_item(self, item):
         item = item % len(self.metadata)

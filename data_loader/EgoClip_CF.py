@@ -129,7 +129,7 @@ class EgoClip_CF(TextVideoDataset):
         features = np.load(features_path, allow_pickle=True)
         features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
 
-        # return before, after, cf1, cf2, cf3
+        # return narration, before, after, cf1, cf2, cf3
         return features[0, 0, :], features[1, 0, :], features[2, 0, :], features[3, 0, :], features[4, 0, :], features[5, 0, :]
 
     def _get_train_item(self, item):
