@@ -30,7 +30,7 @@ import data_loader.data_loader as module_data
 from trainer import Multi_Trainer_dist
 import model.loss as module_loss
 import model.metric as module_metric
-import model.model as module_arch
+import model.counterfactual as module_arch
 import utils.visualizer as module_vis
 from sacred import Experiment
 ex = Experiment('train')

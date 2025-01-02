@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -12,7 +13,7 @@ if [ "$1" = "" ]; then
 fi
 
 export JOB_NAME=$(date '+%Y-%m-%d_%H:%M:%S_')$1
-export DESTINATION_DIR='/path/to/experiments/'
+export DESTINATION_DIR='experiments'
 
 mkdir $DESTINATION_DIR/$JOB_NAME/
 cp -R base/ $DESTINATION_DIR/$JOB_NAME/
@@ -30,4 +31,3 @@ cp trainer.sh $DESTINATION_DIR/$JOB_NAME/trainer_local.sh
 cd $DESTINATION_DIR/$JOB_NAME/
 
 sbatch -J $JOB_NAME trainer_local.sh
-

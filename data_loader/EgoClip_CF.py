@@ -118,16 +118,16 @@ class EgoClip_CF(TextVideoDataset):
 
         return sample['clip_text'], noun_vec, verb_vec
 
-    def _get_state_features(self, video_filename):
+    def _get_state_features(self, sample):
         # example filename: 0e3ee603-7b9d-459d-9006-65285f3efd23_narration_pass_2_69
         # the above was generated from egoclip.csv as follows:
         #     single_vid = df.iloc[j, 0] + '_' + df.iloc[j, 2] + '_' + str(df.iloc[j, 3])
-        
-        symlink_dir = "language_features/symlinks_v2" # make this a self.symlink_dir on init function
+        filename = str(sample['video_uid']) + '_' + str(sample['narration_source']) + '_' + str(sample['narration_ind'])
+        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/symlinks_v2" # make this a self.symlink_dir on init function
 
-        features_path = os.path.join(symlink_dir, video_filename)
+        features_path = os.path.join(symlink_dir, filename)
         features = np.load(features_path, allow_pickle=True)
-        features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
+        features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
 
         # return narration, before, after, cf1, cf2, cf3
         return features[0, 0, :], features[1, 0, :], features[2, 0, :], features[3, 0, :], features[4, 0, :], features[5, 0, :]
@@ -137,7 +137,7 @@ class EgoClip_CF(TextVideoDataset):
         sample = self.metadata.iloc[item]
         video_fp, video_sec, bound_sec = self._get_video_path(sample)
         caption, noun_vec, verb_vec = self._get_caption(sample)
-        before, after, cf1, cf2, cf3 = self._get_state_features(caption)
+        before, after, cf1, cf2, cf3 = self._get_state_features(sample)
         final = self._get_video_frames(video_fp, video_sec, caption)
 
         # Scene-aware negative sampling
