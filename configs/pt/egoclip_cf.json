@@ -53,7 +53,7 @@
         }
     },
     "loss": {
-        "type": "EgoNCE",
+        "type": "InfoNCE",
         "args": {
         }
     },

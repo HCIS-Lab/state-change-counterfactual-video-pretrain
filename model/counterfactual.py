@@ -24,7 +24,7 @@ class CF(BaseModel):
                  video_params,
                  text_params,
                  aggregation_params=None,
-                 projection_dim=256,
+                 projection_dim=768,
                  load_checkpoint=None,
                  projection='minimal',
                  load_temporal_fix='zeros'):
@@ -47,7 +47,7 @@ class CF(BaseModel):
             vit_init = video_params.get('vit_init', 'imagenet-21k')
             if arch_config == 'base_patch16_224':
                 # vit_model = timm.models.vision_transformer.vit_base_patch16_224(pretrained=pretrained)
-                vit_model = torch.load("pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
+                # vit_model = torch.load("pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 vit_model = torch.load("/N/project/ego4d_vlm/state-aware-video-pretrain/pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 model = SpaceTimeTransformer(num_frames=num_frames,
                                             drop_rate=drop_rate,

@@ -59,6 +59,25 @@ class EgoNCE(nn.Module):
         loss_j = jdiag.sum() / len(jdiag)
         return - loss_i - loss_j
 
+class InfoNCE(nn.Module):
+    def __init__(self, temperature=0.05):
+        super().__init__()
+        self.temperature = temperature
+
+    def forward(self, x):
+        mask_diag = torch.eye(x.shape[0]).cuda()
+
+        "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
+
+        # video-text only
+        i_sm = F.softmax(x/self.temperature, dim=1)
+
+        mask_bool = mask_diag > 0
+        idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
+        loss_i = idiag.sum() / len(idiag)
+
+        return - loss_i
+
 class EgoMILNCE(nn.Module):
     def __init__(self, temperature=0.05):
         super().__init__()

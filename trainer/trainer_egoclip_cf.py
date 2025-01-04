@@ -105,7 +105,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 if 'video_neg' in data.keys():  # w/ negative sampling
                     # data['text'] = data['text'] + data['text_neg']
                     # data['text_neg'] = data['text_neg'].to(self.device)
-                    data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
+                    # data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
                     # data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
                     # data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
@@ -123,7 +123,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
                     # n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
                     # v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
-                    print('-'*20)
                     print(video_embeds.shape)
                     print(text_embeds.shape)
                     output = sim_matrix(text_embeds, video_embeds)
