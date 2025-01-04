@@ -27,7 +27,7 @@ import torchvision.models as models
 import transformers
 from tensorboardX import SummaryWriter
 import data_loader.data_loader as module_data
-from trainer import Multi_Trainer_dist
+from trainer import Multi_Trainer_dist_CF
 import model.loss as module_loss
 import model.metric as module_metric
 import model.counterfactual as module_arch
@@ -256,8 +256,8 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
 
 
     # build tokenizer
-    tokenizer = transformers.AutoTokenizer.from_pretrained(config['arch']['args']['text_params']['model'],
-                                                               TOKENIZERS_PARALLELISM=False)
+    # tokenizer = transformers.AutoTokenizer.from_pretrained(config['arch']['args']['text_params']['model'],
+    #                                                            TOKENIZERS_PARALLELISM=False)
 
     print('Current directory is : {}'.format(os.path.abspath(os.getcwd())))
     # setup data_loader instances
@@ -326,13 +326,13 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
     if args.rank == 0:
         writer = SummaryWriter(log_dir=str(config.tf_dir))
 
-    trainer = Multi_Trainer_dist(args, model, loss, metrics, optimizer,
+    trainer = Multi_Trainer_dist_CF(args, model, loss, optimizer,
                       config=config,
                       data_loader=data_loader,
                       lr_scheduler=lr_scheduler,
                       visualizer=visualizer,
                       writer=writer,
-                      tokenizer=tokenizer,
+                      # tokenizer=tokenizer,
                       max_samples_per_epoch=config['trainer']['max_samples_per_epoch'],
                       start_epoch=config['trainer']['start_epoch'])
 

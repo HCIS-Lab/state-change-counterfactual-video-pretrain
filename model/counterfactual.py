@@ -22,6 +22,7 @@ from utils.util import state_dict_data_parallel_fix
 class CF(BaseModel):
     def __init__(self,
                  video_params,
+                 text_params,
                  aggregation_params=None,
                  projection_dim=256,
                  load_checkpoint=None,
@@ -31,8 +32,8 @@ class CF(BaseModel):
 
         self.video_params = video_params
         self.load_temporal_fix = load_temporal_fix
-        if not text_params['pretrained']:
-            raise NotImplementedError("Huggingface text models require pretrained init.")
+        # if not text_params['pretrained']:
+        #     raise NotImplementedError("Huggingface text models require pretrained init.")
 
 
         pretrained = video_params['pretrained']
@@ -133,7 +134,7 @@ class CF(BaseModel):
             video_embeddings = self.compute_video(video_data)
             return video_embeddings
 
-        text_embeddings = data['text_embeddings'] # Either narration clip or summary clip, never stacked text
+        text_embeddings = data['text'] # Either narration clip or summary clip, never stacked text
         video_data = data['video']
 
         video_embeddings = self.compute_video(video_data)

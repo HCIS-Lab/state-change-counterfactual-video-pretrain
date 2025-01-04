@@ -11,10 +11,10 @@
                 "pretrained": true,
                 "time_init": "zeros"
             },
-            "text_params": {
-                "model": "distilbert-base-uncased",
-                "pretrained": true,
-                "input": "text"
+            // "text_params": {
+            //     "model": "distilbert-base-uncased",
+            //     "pretrained": true,
+            //     "input": "text"
             },
             "projection": "minimal",
             "load_checkpoint" : ""

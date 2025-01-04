@@ -137,7 +137,7 @@ class EgoClip_CF(TextVideoDataset):
         sample = self.metadata.iloc[item]
         video_fp, video_sec, bound_sec = self._get_video_path(sample)
         caption, noun_vec, verb_vec = self._get_caption(sample)
-        before, after, cf1, cf2, cf3 = self._get_state_features(sample)
+        nar, before, after, cf1, cf2, cf3 = self._get_state_features(sample)
         final = self._get_video_frames(video_fp, video_sec, caption)
 
         # Scene-aware negative sampling
@@ -161,8 +161,9 @@ class EgoClip_CF(TextVideoDataset):
         #         'noun_vec': noun_vec, 'verb_vec': verb_vec}
 
         return {'video': final, 'text': caption,
+                'video_neg': final_neg, 'text_neg': caption_neg,
                 'meta': meta_arr,
-                'before': before, 'after': after, 'cf1': cf1, 'cf2': cf2, 'cf3': cf3}
+                'narration': nar, 'before': before, 'after': after, 'cf1': cf1, 'cf2': cf2, 'cf3': cf3}
 
     def __len__(self):
         return len(self.metadata)

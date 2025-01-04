@@ -15,7 +15,7 @@ class BaseTrainer:
     """
     Base class for all trainers
     """
-    def __init__(self, model, loss, metrics, optimizer, config, writer=None, init_val=False):
+    def __init__(self, model, loss, optimizer, config, writer=None, init_val=False):
         self.config = config
         self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
         self.init_val = init_val
@@ -28,7 +28,7 @@ class BaseTrainer:
 
         loss = loss.to(self.device)
         self.loss = loss
-        self.metrics = metrics
+        # self.metrics = metrics
         self.optimizer = optimizer
 
         cfg_trainer = config['trainer']
@@ -42,8 +42,8 @@ class BaseTrainer:
             self.mnt_mode = 'off'
             self.mnt_best = 0
         else:
-            self.mnt_mode, self.mnt_metric = self.monitor.split()
-            assert self.mnt_mode in ['min', 'max']
+            # self.mnt_mode, self.mnt_metric = self.monitor.split()
+            # assert self.mnt_mode in ['min', 'max']
 
             self.mnt_best = inf if self.mnt_mode == 'min' else -inf
             self.early_stop = cfg_trainer.get('early_stop', inf)
@@ -247,7 +247,7 @@ class Multi_BaseTrainer_dist:
     """
     Base class for all trainers
     """
-    def __init__(self, args, model, loss, metrics, optimizer, config, writer=None, init_val=False, start_epoch=1):
+    def __init__(self, args, model, loss, optimizer, config, writer=None, init_val=False, start_epoch=1):
         self.config = config
         self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
         self.init_val = init_val
@@ -271,7 +271,7 @@ class Multi_BaseTrainer_dist:
 
         loss = loss.to(self.device)
         self.loss = loss
-        self.metrics = metrics
+        # self.metrics = metrics
         self.optimizer = optimizer
 
         cfg_trainer = config['trainer']
@@ -282,15 +282,15 @@ class Multi_BaseTrainer_dist:
         self.agg_train_freq = cfg_trainer.get('aggregation_freq', None)
 
         # configuration to monitor model performance and save best
-        if self.monitor == 'off':
-            self.mnt_mode = 'off'
-            self.mnt_best = 0
-        else:
-            self.mnt_mode, self.mnt_metric = self.monitor.split()
-            assert self.mnt_mode in ['min', 'max']
+        # if self.monitor == 'off':
+        #     self.mnt_mode = 'off'
+        #     self.mnt_best = 0
+        # else:
+            # self.mnt_mode, self.mnt_metric = self.monitor.split()
+            # assert self.mnt_mode in ['min', 'max']
 
-            self.mnt_best = inf if self.mnt_mode == 'min' else -inf
-            self.early_stop = cfg_trainer.get('early_stop', inf)
+            # self.mnt_best = inf if self.mnt_mode == 'min' else -inf
+            # self.early_stop = cfg_trainer.get('early_stop', inf)
 
         self.start_epoch = start_epoch
 
@@ -339,22 +339,22 @@ class Multi_BaseTrainer_dist:
 
             # save logged informations into log dict
             log = {'epoch': epoch}
-            for key, value in result.items():
-              if self.args.rank == 0:
-                if key == 'metrics':
-                    log.update({mtr.__name__: value[i]
-                                for i, mtr in enumerate(self.metrics)})
-                elif key == 'val_metrics':
-                    log.update({'val_' + mtr.__name__: value[i]
-                                for i, mtr in enumerate(self.metrics)})
-                elif key == 'nested_val_metrics':
-                    # NOTE: currently only supports two layers of nesting
-                    for subkey, subval in value.items():
-                        for subsubkey, subsubval in subval.items():
-                            for subsubsubkey, subsubsubval in subsubval.items():
-                                log[f"val_{subkey}_{subsubkey}_{subsubsubkey}"] = subsubsubval
-                else:
-                    log[key] = value
+            # for key, value in result.items():
+            #   if self.args.rank == 0:
+            #     if key == 'metrics':
+            #         log.update({mtr.__name__: value[i]
+            #                     for i, mtr in enumerate(self.metrics)})
+            #     elif key == 'val_metrics':
+            #         log.update({'val_' + mtr.__name__: value[i]
+            #                     for i, mtr in enumerate(self.metrics)})
+            #     elif key == 'nested_val_metrics':
+            #         # NOTE: currently only supports two layers of nesting
+            #         for subkey, subval in value.items():
+            #             for subsubkey, subsubval in subval.items():
+            #                 for subsubsubkey, subsubsubval in subsubval.items():
+            #                     log[f"val_{subkey}_{subsubkey}_{subsubsubkey}"] = subsubsubval
+            #     else:
+            #         log[key] = value
 
             # print logged informations to the screen
             for key, value in log.items():
@@ -362,34 +362,34 @@ class Multi_BaseTrainer_dist:
                 print('    {:15s}: {}'.format(str(key), value))
 
             # evaluate model performance according to configured metric, save best checkpoint as model_best
-            best = False
-            if self.mnt_mode != 'off' and self.args.rank == 0:
-                try:
-                    # check whether model performance improved or not, according to specified metric(mnt_metric)
-                    improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \
-                               (self.mnt_mode == 'max' and log[self.mnt_metric] >= self.mnt_best)
-                except KeyError:
-                    self.logger.warning("Warning: Metric '{}' is not found. "
-                                        "Model performance monitoring is disabled.".format(self.mnt_metric))
-                    self.mnt_mode = 'off'
-                    improved = False
+            # best = False
+            # if self.mnt_mode != 'off' and self.args.rank == 0:
+            #     try:
+            #         # check whether model performance improved or not, according to specified metric(mnt_metric)
+            #         improved = (self.mnt_mode == 'min' and log[self.mnt_metric] <= self.mnt_best) or \
+            #                    (self.mnt_mode == 'max' and log[self.mnt_metric] >= self.mnt_best)
+            #     except KeyError:
+            #         self.logger.warning("Warning: Metric '{}' is not found. "
+            #                             "Model performance monitoring is disabled.".format(self.mnt_metric))
+            #         self.mnt_mode = 'off'
+            #         improved = False
 
-                if improved:
-                    self.mnt_best = log[self.mnt_metric]
-                    not_improved_count = 0
-                    best = True
-                else:
-                    not_improved_count += 1
+            #     if improved:
+            #         self.mnt_best = log[self.mnt_metric]
+            #         not_improved_count = 0
+            #         best = True
+            #     else:
+            #         not_improved_count += 1
 
-                #if not_improved_count > self.early_stop:
-                #    print("Validation performance didn\'t improve for {} epochs. "
-                #                     "Training stops.".format(self.early_stop))
-                #    break
+            #     #if not_improved_count > self.early_stop:
+            #     #    print("Validation performance didn\'t improve for {} epochs. "
+            #     #                     "Training stops.".format(self.early_stop))
+            #     #    break
 
-            if epoch % self.save_period == 0 or best:
-                if self.args.rank == 0:
-                #if best:
-                    self._save_checkpoint(epoch, save_best=best)
+            # if epoch % self.save_period == 0 or best:
+            #     if self.args.rank == 0:
+            #     #if best:
+            self._save_checkpoint(epoch, save_best=best)
 
     def _prepare_device(self, n_gpu_use):
         """
