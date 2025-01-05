@@ -89,19 +89,20 @@ class InfoNCE(nn.Module):
     def forward(self, text_embeds, video_embeds, frame_embeds):
         loss_dict = {}
 
+        narration, before, after, CF1, CF2, CF3 = text_embeds
         # video_text_alignment
         mask_diag = torch.eye(video_embeds.shape[0]).cuda()
 
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
 
         # video-text only
-        align_sim = sim_matrix(video_embeds, text_embeds)
+        align_sim = sim_matrix(video_embeds, narration)
         i_sm = F.softmax(align_sim/self.temperature, dim=1)
-
         mask_bool = mask_diag > 0
         idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
         loss_align = idiag.sum() / len(idiag)
         loss_align['align'] = loss_align.item()
+
 
         ## Within Video TCN Loss
         ## Number of negative video examples to use
@@ -113,39 +114,60 @@ class InfoNCE(nn.Module):
         f2 = frame_embeds[:, 2]
         f3 = frame_embeds[:, 3]
 
-        ## Computing distance from t0-t2, t1-t2, t1-t0
-        sim_3_0 = model.module.sim(f3, f0) 
-        sim_3_2 = model.module.sim(f3, f2)
-        
-        sim_0_1 = model.module.sim(f0, f1)
-        sim_0_3 = model.module.sim(f0, f3)
+        sim_0_1 = sim(f0, f1)
+        sim_0_3 = sim(f0, f3)
+        sim_0_before = sim(f0, before)
+        sim_0_after = sim(f0, after)
+        sim_0_cf_1 = sim(f0, CF1)
+        sim_0_cf_2 = sim(f0, CF2)
+        sim_0_cf_3 = sim(f0, CF3)
+
+
+        sim_3_0 = sim(f3, f0) 
+        sim_3_2 = sim(f3, f2)
+        sim_3_after = sim(f3, after)
+        sim_3_before = sim(f3, before)
+        sim_3_cf_1 = sim(f3, CF1)
+        sim_3_cf_2 = sim(f3, CF2)
+        sim_3_cf_3 = sim(f3, CF3)
 
         ## For the specified number of negatives from other videos
         ## Add it as a negative
-        neg2 = []
         neg0 = []
-        for _ in range(num_neg_v):
-            es0_shuf = es0[torch.randperm(es0.size()[0])]
-            es2_shuf = es2[torch.randperm(es2.size()[0])]
-            neg0.append(model.module.sim(es0, es0_shuf))
-            neg2.append(model.module.sim(es2, es2_shuf))
+        neg3 = []
+        for _ in range(self.num_neg):
+            f0_shuf = f0[torch.randperm(f0.size()[0])]
+            f3_shuf = f3[torch.randperm(f3.size()[0])]
+            neg0.append(sim(f0, f0_shuf))
+            neg3.append(sim(f3, f3_shuf))
         neg0 = torch.stack(neg0, -1)
-        neg2 = torch.stack(neg2, -1)
+        neg3 = torch.stack(neg3, -1)
 
-        ## TCN Loss
-        smoothloss1 = -torch.log(epsilon + (torch.exp(sim_1_2) / (epsilon + torch.exp(sim_0_2) + torch.exp(sim_1_2) + torch.exp(neg2).sum(-1))))
-        smoothloss2 = -torch.log(epsilon + (torch.exp(sim_0_1) / (epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_2) + torch.exp(neg0).sum(-1))))
-        smoothloss = ((smoothloss1 + smoothloss2) / 2.0).mean()
+        ## frame TCN Loss
+        tcn_0 = -torch.log((epsilon + (torch.exp(sim_0_1) + torch.exp(sim_0_before))/ 
+            (epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) +
+                torch.exp(sim_0_3) + 
+                torch.exp(sim_0_after) + torch.exp(sim_0_CF1) + torch.exp(sim_0_CF2) + torch.exp(sim_0_CF1) +
+                torch.exp(neg0).sum(-1))))
         
-        loss = loss_align + smoothloss
+        tcn_3 = -torch.log((epsilon + (torch.exp(sim_3_2) + torch.exp(sim_3_after))/ 
+            (epsilon + torch.exp(sim_3_2) + torch.exp(sim_3_after) + 
+                torch.exp(sim_3_0) + 
+                torch.exp(sim_3_before) + torch.exp(sim_3_CF1) + torch.exp(sim_3_CF2) + torch.exp(sim_3_CF1) +
+                torch.exp(neg3).sum(-1))))
+        
+        tcn = ((tcn_3 + tcn_0) / 2.0).mean()
+        loss_dict['tcn'] = tcn.item()
+
+        loss = loss_align + tcn
         return loss_dict, loss
 
 def sim(self, tensor1, tensor2):
     cs = torch.nn.CosineSimilarity(1)
-    if self.l2dist:
-        d = - torch.linalg.norm(tensor1 - tensor2, dim = -1)
-    else:
-        d = cs(tensor1, tensor2)
+    # if l2dist:
+    #     d = - torch.linalg.norm(tensor1 - tensor2, dim = -1)
+    # else:
+    d = cs(tensor1, tensor2)
     return d
 
 def sim_matrix(a, b, eps=1e-8):
