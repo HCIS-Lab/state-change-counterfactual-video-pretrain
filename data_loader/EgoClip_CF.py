@@ -38,9 +38,9 @@ class EgoClip_CF(TextVideoDataset):
             self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
             self.frame_sample = 'rand'
 
-            with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
-                self.state_metadata = json.load(json_file)
-            self.metadata = self.metadata[self.metadata['clip_text'].isin(self.state_metadata.keys())].reset_index(drop=True)
+            # with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
+            #     self.state_metadata = json.load(json_file)
+            # self.metadata = self.metadata[self.metadata['clip_text'].isin(self.state_metadata.keys())].reset_index(drop=True)
 
             append_summary_baseline = False #TODO: Move to config
             if append_summary_baseline:
@@ -163,7 +163,7 @@ class EgoClip_CF(TextVideoDataset):
         return {'video': final, 'text': caption,
                 'video_neg': final_neg, 'text_neg': caption_neg,
                 'meta': meta_arr,
-                'narration': nar, 'before': before, 'after': after, 'cf1': cf1, 'cf2': cf2, 'cf3': cf3}
+                'narration': nar, 'before': before, 'after': after, 'CF1': cf1, 'CF2': cf2, 'CF3': cf3}
 
     def __len__(self):
         return len(self.metadata)

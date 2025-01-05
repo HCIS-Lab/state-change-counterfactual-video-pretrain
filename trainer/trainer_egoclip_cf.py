@@ -112,16 +112,30 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
 
                 # # data['text'] = {key: val.to(self.device) for key, val in data['text'].items()}
                 # data['text'] = data['narration'].to(self.device)
-                # data['video'] = data['video'].to(self.device)
+                data['narration'] =  data['narration'].to(self.device)
+                data['before'] = data['before'].to(self.device)
+                data['after'] = data['after'].to(self.device)
+                data['CF1'] = data['CF1'].to(self.device)
+                data['CF2'] = data['CF2'].to(self.device)
+                data['CF3'] = data['CF3'].to(self.device)
+                data['video'] = data['video'].to(self.device)
+                
                 # n_embeds = data['noun_vec'].to(self.device)
                 # v_embeds = data['verb_vec'].to(self.device)
 
                 self.optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
-                    text_embeds, video_embeds, frame_embeds = self.model(data)
+                    video_embeds, frame_embeds = self.model(data)
                     video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
                     frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
-                    text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
+                    # text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
+                    narration = self.allgather(data['narration'], self.n_gpu, self.args)
+                    before = self.allgather(data['before'], self.n_gpu, self.args)
+                    after = self.allgather(data['after'], self.n_gpu, self.args)
+                    CF1 = self.allgather(data['CF1'], self.n_gpu, self.args)
+                    CF2 = self.allgather(data['CF2'], self.n_gpu, self.args)
+                    CF3 = self.allgather(data['CF3'], self.n_gpu, self.args)
+                    text_embeds = [narration, before, after, CF1, CF2, CF3]
                     # n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
                     # v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
 
