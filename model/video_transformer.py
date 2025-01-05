@@ -258,7 +258,7 @@ class SpaceTimeTransformer(nn.Module):
                 attention_style=attention_style)
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
-
+        self.patch_norm = norm_layer(embed_dim)
         # Representation layer
         if representation_size:
             self.num_features = representation_size
@@ -310,6 +310,8 @@ class SpaceTimeTransformer(nn.Module):
         b, curr_frames, channels, _, _ = x.shape
         x = self.patch_embed(x)
         x = x.flatten(2).transpose(2, 1)
+
+        # [b, f*p*p, dim]
         x = x.reshape(b, -1, self.patch_embed.embed_dim)
 
         BF = x.shape[0]
@@ -334,15 +336,17 @@ class SpaceTimeTransformer(nn.Module):
                     self.einops_to_time,
                     time_n=n, space_f=f)
 
+        spatial_temp_patches = x[:,1:]
+        spatial_temp_patches = self.patch_norm(spatial_temp_patches)
         x = self.norm(x)[:, 0]
         x = self.pre_logits(x)
 
-        return x
+        return x, spatial_temp_patches
 
     def forward(self, x):
-        x = self.forward_features(x)
+        x, spatial_temp_patches = self.forward_features(x)
         x = self.head(x)
-        return x
+        return x, spatial_temp_patches
 
 if __name__ == "__main__":
     network = SpaceTimeTransformer(num_frames=4)

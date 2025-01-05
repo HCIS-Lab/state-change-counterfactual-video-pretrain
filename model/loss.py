@@ -78,6 +78,86 @@ class InfoNCE(nn.Module):
 
         return - loss_i
 
+
+# https://github.com/facebookresearch/r3m/blob/main/r3m/trainer.py
+class InfoNCE(nn.Module):
+    def __init__(self, temperature=0.05, num_negatives=3):
+        super().__init__()
+        self.temperature = temperature
+        self.num_neg = num_negatives
+
+    def forward(self, text_embeds, video_embeds, frame_embeds):
+        loss_dict = {}
+
+        # video_text_alignment
+        mask_diag = torch.eye(video_embeds.shape[0]).cuda()
+
+        "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
+
+        # video-text only
+        align_sim = sim_matrix(video_embeds, text_embeds)
+        i_sm = F.softmax(align_sim/self.temperature, dim=1)
+
+        mask_bool = mask_diag > 0
+        idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
+        loss_align = idiag.sum() / len(idiag)
+        loss_align['align'] = loss_align.item()
+
+        ## Within Video TCN Loss
+        ## Number of negative video examples to use
+        bs = frame_embeds.shape[0]
+        num_frame = frame_embeds.shape[1]
+        frame_embeds = frame_embeds.reshape(bs, num_frame, -1)
+        f0 = frame_embeds[:, 0]
+        f1 = frame_embeds[:, 1]
+        f2 = frame_embeds[:, 2]
+        f3 = frame_embeds[:, 3]
+
+        ## Computing distance from t0-t2, t1-t2, t1-t0
+        sim_3_0 = model.module.sim(f3, f0) 
+        sim_3_2 = model.module.sim(f3, f2)
+        
+        sim_0_1 = model.module.sim(f0, f1)
+        sim_0_3 = model.module.sim(f0, f3)
+
+        ## For the specified number of negatives from other videos
+        ## Add it as a negative
+        neg2 = []
+        neg0 = []
+        for _ in range(num_neg_v):
+            es0_shuf = es0[torch.randperm(es0.size()[0])]
+            es2_shuf = es2[torch.randperm(es2.size()[0])]
+            neg0.append(model.module.sim(es0, es0_shuf))
+            neg2.append(model.module.sim(es2, es2_shuf))
+        neg0 = torch.stack(neg0, -1)
+        neg2 = torch.stack(neg2, -1)
+
+        ## TCN Loss
+        smoothloss1 = -torch.log(epsilon + (torch.exp(sim_1_2) / (epsilon + torch.exp(sim_0_2) + torch.exp(sim_1_2) + torch.exp(neg2).sum(-1))))
+        smoothloss2 = -torch.log(epsilon + (torch.exp(sim_0_1) / (epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_2) + torch.exp(neg0).sum(-1))))
+        smoothloss = ((smoothloss1 + smoothloss2) / 2.0).mean()
+        
+        loss = loss_align + smoothloss
+        return loss_dict, loss
+
+def sim(self, tensor1, tensor2):
+    cs = torch.nn.CosineSimilarity(1)
+    if self.l2dist:
+        d = - torch.linalg.norm(tensor1 - tensor2, dim = -1)
+    else:
+        d = cs(tensor1, tensor2)
+    return d
+
+def sim_matrix(a, b, eps=1e-8):
+    """
+    added eps for numerical stability
+    """
+    a_n, b_n = a.norm(dim=1)[:, None], b.norm(dim=1)[:, None]
+    a_norm = a / torch.max(a_n, eps * torch.ones_like(a_n))
+    b_norm = b / torch.max(b_n, eps * torch.ones_like(b_n))
+    sim_mt = torch.mm(a_norm, b_norm.transpose(0, 1))
+    return sim_mt
+
 class EgoMILNCE(nn.Module):
     def __init__(self, temperature=0.05):
         super().__init__()

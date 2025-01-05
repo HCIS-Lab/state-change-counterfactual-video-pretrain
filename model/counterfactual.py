@@ -95,11 +95,15 @@ class CF(BaseModel):
             vid_proj = nn.Sequential(
                 nn.Linear(ftr_dim, projection_dim)
             )
+            frame_proj = nn.Sequential(
+                nn.Linear(ftr_dim, projection_dim)
+            )
         elif projection == '':
             vid_proj = nn.Identity()
         else:
             raise NotImplementedError
         self.vid_proj = vid_proj
+        self.frame_proj = frame_proj
 
         if aggregation_params is not None and aggregation_params['do_aggregation']:
             if aggregation_params['type'] not in ['self-attention', 'average']:
@@ -131,13 +135,13 @@ class CF(BaseModel):
             raise NotImplementedError("If do_aggregation is activated, batch_size must be provided.")
         if video_only:
             video_data = data['video']
-            video_embeddings = self.compute_video(video_data)
-            return video_embeddings
+            video_embeddings, frame_embeddings = self.compute_video(video_data)
+            return video_embeddings, frame_embeddings
 
         text_embeddings = data['text'] # Either narration clip or summary clip, never stacked text
         video_data = data['video']
 
-        video_embeddings = self.compute_video(video_data)
+        video_embeddings, frame_embeddings = self.compute_video(video_data)
 
         if 'aggregated_text' in data and do_aggregation:
             # If aggregated_text is present in the dict, the model should always return the
@@ -157,7 +161,7 @@ class CF(BaseModel):
                 text_parent_embeddings = None
 
         if return_embeds and not do_aggregation:
-            return text_embeddings, video_embeddings
+            return text_embeddings, video_embeddings, frame_embeddings
         elif return_embeds and do_aggregation:
             return text_embeddings, video_embeddings, text_parent_embeddings, video_parent_embeddings, text_stacked_embeddings
         elif not return_embeds and not do_aggregation:
@@ -171,9 +175,10 @@ class CF(BaseModel):
         return self.aggregation(video_embeddings, batch_size)
 
     def compute_video(self, video_data):
-        video_embeddings = self.video_model(video_data)
+        video_embeddings, frame_embeddings = self.video_model(video_data)
         video_embeddings = self.vid_proj(video_embeddings)
-        return video_embeddings
+        frame_embeddings = self.frame_proj(frame_embeddings)
+        return video_embeddings, frame_embeddings
 
     def average(self, embeddings, batch_size):
         # Expected embeddings input shape: (batch_size x samples_per_video) x embed_dim and output shape: batch_size x embed_dim
