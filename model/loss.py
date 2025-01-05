@@ -101,7 +101,7 @@ class InfoNCE(nn.Module):
         mask_bool = mask_diag > 0
         idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
         loss_align = idiag.sum() / len(idiag)
-        loss_align['align'] = loss_align.item()
+        loss_dict['align'] = loss_align.item()
 
 
         ## Within Video TCN Loss
@@ -162,7 +162,7 @@ class InfoNCE(nn.Module):
         loss = loss_align + tcn
         return loss_dict, loss
 
-def sim(self, tensor1, tensor2):
+def sim(tensor1, tensor2):
     cs = torch.nn.CosineSimilarity(1)
     # if l2dist:
     #     d = - torch.linalg.norm(tensor1 - tensor2, dim = -1)
