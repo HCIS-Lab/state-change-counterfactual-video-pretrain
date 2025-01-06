@@ -118,18 +118,18 @@ class InfoNCE(nn.Module):
         sim_0_3 = sim(f0, f3)
         sim_0_before = sim(f0, before)
         sim_0_after = sim(f0, after)
-        sim_0_cf_1 = sim(f0, CF1)
-        sim_0_cf_2 = sim(f0, CF2)
-        sim_0_cf_3 = sim(f0, CF3)
+        sim_0_cf1 = sim(f0, CF1)
+        sim_0_cf2 = sim(f0, CF2)
+        sim_0_cf3 = sim(f0, CF3)
 
 
         sim_3_0 = sim(f3, f0) 
         sim_3_2 = sim(f3, f2)
         sim_3_after = sim(f3, after)
         sim_3_before = sim(f3, before)
-        sim_3_cf_1 = sim(f3, CF1)
-        sim_3_cf_2 = sim(f3, CF2)
-        sim_3_cf_3 = sim(f3, CF3)
+        sim_3_cf1 = sim(f3, CF1)
+        sim_3_cf2 = sim(f3, CF2)
+        sim_3_cf3 = sim(f3, CF3)
 
         ## For the specified number of negatives from other videos
         ## Add it as a negative
@@ -147,13 +147,13 @@ class InfoNCE(nn.Module):
         tcn_0 = -torch.log((epsilon + (torch.exp(sim_0_1) + torch.exp(sim_0_before))/ 
             (epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) +
                 torch.exp(sim_0_3) + 
-                torch.exp(sim_0_after) + torch.exp(sim_0_CF1) + torch.exp(sim_0_CF2) + torch.exp(sim_0_CF1) +
+                torch.exp(sim_0_after) + torch.exp(sim_0_cf1) + torch.exp(sim_0_cf2) + torch.exp(sim_0_cf3) +
                 torch.exp(neg0).sum(-1))))
         
         tcn_3 = -torch.log((epsilon + (torch.exp(sim_3_2) + torch.exp(sim_3_after))/ 
             (epsilon + torch.exp(sim_3_2) + torch.exp(sim_3_after) + 
                 torch.exp(sim_3_0) + 
-                torch.exp(sim_3_before) + torch.exp(sim_3_CF1) + torch.exp(sim_3_CF2) + torch.exp(sim_3_CF1) +
+                torch.exp(sim_3_before) + torch.exp(sim_3_cf1) + torch.exp(sim_3_cf2) + torch.exp(sim_3_cf3) +
                 torch.exp(neg3).sum(-1))))
         
         tcn = ((tcn_3 + tcn_0) / 2.0).mean()
