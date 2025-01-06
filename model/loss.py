@@ -88,7 +88,7 @@ class InfoNCE(nn.Module):
 
     def forward(self, text_embeds, video_embeds, frame_embeds):
         loss_dict = {}
-
+        epsilon = 1e-8
         narration, before, after, CF1, CF2, CF3 = text_embeds
         # video_text_alignment
         mask_diag = torch.eye(video_embeds.shape[0]).cuda()

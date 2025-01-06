@@ -147,7 +147,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     #     # loss = self.loss(output, sim_v, sim_n)
                     # else:
                     # loss = self.loss(output)
-                    loss = self.loss(text_embeds, video_embeds, frame_embeds)
+                    loss_dict, loss = self.loss(text_embeds, video_embeds, frame_embeds)
                 loss.backward()
 
                 self.optimizer.step()
