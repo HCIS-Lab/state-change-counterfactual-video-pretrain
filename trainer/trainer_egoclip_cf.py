@@ -91,7 +91,8 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
 
             The metrics in log must have the key 'metrics'.
         """
-
+        print('---------------')
+        print(epoch)
         self.model.train()
         total_loss = [0] * len(self.data_loader)
         # total_metrics = np.zeros(len(self.metrics))
@@ -157,8 +158,8 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     total = int(self.data_loader[dl_idx].n_samples/self.n_gpu)
                     current = batch_idx * self.data_loader[dl_idx].batch_size
                     final_total = (epoch-1) * total + current
-                    self.writer.add_scalar(f'Loss_training/loss_{dl_idx}', loss.detach().item(), final_total)
-
+                    self.writer.add_scalar(f'Video-text Align_Loss_training/loss_{dl_idx}', loss_dict['align'], final_total)
+                    self.writer.add_scalar(f'TCN Loss_training/loss_{dl_idx}', loss_dict['tcn'], final_total)
                 total_loss[dl_idx] += loss.detach().item()
 
                 # if batch_idx % self.log_step == 0 and self.args.local_rank == 0:
@@ -169,6 +170,18 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                         dl_idx,
                         self._progress(batch_idx, dl_idx),
                         loss.detach().item()))
+                    self.logger.info('[{}] Train Epoch: {} dl{} {} Align Loss: {:.6f}'.format(
+                        datetime.now().strftime(r'%m%d_%H:%M:%S'),
+                        epoch,
+                        dl_idx,
+                        self._progress(batch_idx, dl_idx),
+                        loss_dict['align']))
+                    self.logger.info('[{}] Train Epoch: {} dl{} {} TCN Loss: {:.6f}'.format(
+                        datetime.now().strftime(r'%m%d_%H:%M:%S'),
+                        epoch,
+                        dl_idx,
+                        self._progress(batch_idx, dl_idx),
+                        loss_dict['tcn']))
 
                 self.optimizer.zero_grad()
             if batch_idx == self.len_epoch:
@@ -177,6 +190,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         log = {
             f'loss_{dl_idx}': total_loss[dl_idx] / self.len_epoch for dl_idx in range(len(self.data_loader))
         }
+
 
         if self.writer is not None and self.args.rank == 0:
             for dl_idx in range(len(self.data_loader)):
