@@ -83,8 +83,8 @@ class InfoNCE(nn.Module):
         mask_bool = mask_diag > 0
         idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
         loss_align = idiag.sum() / len(idiag)
+        loss_align = -1 * loss_align
         loss_dict['align'] = loss_align.item()
-
 
         ## Within Video TCN Loss
         ## Number of negative video examples to use
@@ -103,7 +103,6 @@ class InfoNCE(nn.Module):
         sim_0_cf1 = sim(f0, CF1)
         sim_0_cf2 = sim(f0, CF2)
         sim_0_cf3 = sim(f0, CF3)
-
 
         sim_3_0 = sim(f3, f0) 
         sim_3_2 = sim(f3, f2)
