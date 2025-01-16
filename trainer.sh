@@ -28,7 +28,7 @@ conda activate hiervl
 echo "Allocated GPUs:"
 srun --nodes=2 --ntasks=2 bash -c 'hostname; nvidia-smi'
 
-# srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/egoclip_cf.json --experiment egoclip_cf
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/egoclip_cf.json --experiment egoclip_cf
 
 # srun python -m torch.distributed.launch \
 #      --nproc_per_node=4 \
