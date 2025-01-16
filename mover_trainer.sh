@@ -11,7 +11,7 @@ if [ "$1" = "" ]; then
     echo "Job name cannot be empty"
     exit 1
 fi
-export JOB_NAME=${SLURM_JOBID}_$(date '+%Y-%m-%d_%H:%M:%S_')$1
+export JOB_NAME=$1_$(date '+%Y-%m-%d_%H:%M:%S')
 export DESTINATION_DIR='experiments'
 
 mkdir $DESTINATION_DIR/$JOB_NAME/
