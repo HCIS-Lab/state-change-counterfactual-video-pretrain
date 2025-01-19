@@ -133,20 +133,27 @@ class InfoNCE(nn.Module):
         neg3 = torch.stack(neg3, -1)
 
         ## frame TCN Loss
-        denom_tcn_0 = (epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) +
-                torch.exp(sim_0_3) + 
-                torch.exp(sim_0_after) + torch.exp(sim_0_cf1) + torch.exp(sim_0_cf2) + torch.exp(sim_0_cf3) +
-                torch.exp(neg0).sum(-1))
-        
-        denom_tcn_3 = (epsilon + torch.exp(sim_3_2) + torch.exp(sim_3_after) + 
-                torch.exp(sim_3_0) + 
-                torch.exp(sim_3_before) + torch.exp(sim_3_cf1) + torch.exp(sim_3_cf2) + torch.exp(sim_3_cf3) +
-                torch.exp(neg3).sum(-1))
-        
-        tcn_0 = -( torch.log(epsilon + torch.exp(sim_0_1) / denom_tcn_0) ) - ( torch.log(epsilon + torch.exp(sim_0_before) / denom_tcn_0) )
-        tcn_0 /= 2
+        # denom_tcn_0 = epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) +
+        #         torch.exp(sim_0_3) + 
+        #         torch.exp(sim_0_after) + torch.exp(sim_0_cf1) + torch.exp(sim_0_cf2) + torch.exp(sim_0_cf3) +
+        #         torch.exp(neg0).sum(-1)
 
-        tcn_3 = -( torch.log(epsilon + torch.exp(sim_3_2) / denom_tcn_3) ) - ( torch.log(epsilon + torch.exp(sim_3_after) / denom_tcn_3) )
+        denom_tcn_0 = epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) + \
+              torch.exp(sim_0_3) + torch.exp(sim_0_after) + \
+              torch.exp(sim_0_cf1) + torch.exp(sim_0_cf2) + torch.exp(sim_0_cf3) + \
+              (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
+        
+        denom_tcn_3 = epsilon + torch.exp(sim_3_2) + torch.exp(sim_3_after) + \
+                torch.exp(sim_3_0) + torch.exp(sim_3_before) + \
+                torch.exp(sim_3_cf1) + torch.exp(sim_3_cf2) + torch.exp(sim_3_cf3) + \
+                (torch.exp(neg3) / self.num_neg).sum(-1)
+
+        tcn_0 = -torch.log((torch.exp(sim_0_1) + epsilon) / denom_tcn_0) - torch.log((torch.exp(sim_0_before) + epsilon) / denom_tcn_0)
+        tcn_3 = -torch.log((torch.exp(sim_3_2) + epsilon) / denom_tcn_3) - torch.log((torch.exp(sim_3_after) + epsilon) / denom_tcn_3)
+        
+        # tcn_0 = -( torch.log(epsilon + torch.exp(sim_0_1) / denom_tcn_0) ) - ( torch.log(epsilon + torch.exp(sim_0_before) / denom_tcn_0) )
+        tcn_0 /= 2
+        # tcn_3 = -( torch.log(epsilon + torch.exp(sim_3_2) / denom_tcn_3) ) - ( torch.log(epsilon + torch.exp(sim_3_after) / denom_tcn_3) )
         tcn_3 /= 2
 
         
