@@ -306,7 +306,7 @@ class SpaceTimeTransformer(nn.Module):
         self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
     def forward_features(self, x):
-        b, curr_frames, channels, _, _ = x.shape
+        b, curr_frames, channels, H, W = x.shape
         x = self.patch_embed(x)
         x = x.flatten(2).transpose(2, 1)
 
@@ -337,15 +337,18 @@ class SpaceTimeTransformer(nn.Module):
 
         x = self.norm(x)
         spatial_temp_patches = x[:,1:]
+        # b, tokens, c
+        spatial_temp_patches = spatial_temp_patches.reshape(b, f, H, W, C)
+        temp_patches = spatial_temp_patches.mean(dim=(2, 3))
         x = x[:, 0]
         x = self.pre_logits(x)
 
-        return x, spatial_temp_patches
+        return x, temp_patches
 
     def forward(self, x):
-        x, spatial_temp_patches = self.forward_features(x)
+        x, temp_patches = self.forward_features(x)
         x = self.head(x)
-        return x, spatial_temp_patches
+        return x, temp_patches
 
 if __name__ == "__main__":
     network = SpaceTimeTransformer(num_frames=4)
