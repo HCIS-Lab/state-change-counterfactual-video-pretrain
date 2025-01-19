@@ -26,8 +26,8 @@
                     "type": "MultiDistTextVideoDataLoader",
                     "args":{
                         "dataset_name": "EgoClip",
-                        "data_dir": "absolute/path/to/ego4d_chunked/",
-                        "meta_dir": "absolute/path/to/dataset/",
+                        "data_dir": "/N/project/ego4d_vlm/ego4d_chunked/",
+                        "meta_dir": "/N/project/ego4d_vlm/",
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 32,
