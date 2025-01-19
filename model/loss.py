@@ -72,18 +72,26 @@ class InfoNCE(nn.Module):
         loss_dict = {}
         epsilon = 1e-8
         narration, before, after, CF1, CF2, CF3 = text_embeds
+        narration.requires_grad = False
+        before.requires_grad = False
+        after.requires_grad = False
+        CF1.requires_grad = False
+        CF2.requires_grad = False
+        CF3.requires_grad = False
         # video_text_alignment
-        mask_diag = torch.eye(video_embeds.shape[0]).cuda()
+        # mask_diag = torch.eye(video_embeds.shape[0]).cuda()
 
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
 
         # video-text only
         align_sim = sim_matrix(video_embeds, narration)
         i_sm = F.softmax(align_sim/self.temperature, dim=1)
-        mask_bool = mask_diag > 0
-        idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
-        loss_align = idiag.sum() / len(idiag)
-        loss_align = -1 * loss_align
+        # mask_bool = mask_diag > 0
+        # idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
+        # loss_align = idiag.sum() / len(idiag)
+        # loss_align = -1 * loss_align
+        idiag = torch.log(torch.diag(i_sm) + 1e-8)
+        loss_align = -idiag.mean()
         loss_dict['align'] = loss_align.item()
 
         ## Within Video TCN Loss
