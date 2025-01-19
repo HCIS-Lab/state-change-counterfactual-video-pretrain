@@ -258,7 +258,6 @@ class SpaceTimeTransformer(nn.Module):
                 attention_style=attention_style)
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
-        self.patch_norm = norm_layer(embed_dim)
         # Representation layer
         if representation_size:
             self.num_features = representation_size
@@ -336,9 +335,9 @@ class SpaceTimeTransformer(nn.Module):
                     self.einops_to_time,
                     time_n=n, space_f=f)
 
+        x = self.norm(x)
         spatial_temp_patches = x[:,1:]
-        spatial_temp_patches = self.patch_norm(spatial_temp_patches)
-        x = self.norm(x)[:, 0]
+        x = x[:, 0]
         x = self.pre_logits(x)
 
         return x, spatial_temp_patches
