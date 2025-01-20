@@ -93,11 +93,11 @@ class CF(BaseModel):
         # Project to a common embedding
         if projection == 'minimal':
             vid_proj = nn.Sequential(
-                nn.GELU()
+                nn.GELU(),
                 nn.Linear(ftr_dim, projection_dim)
             )
             frame_proj = nn.Sequential(
-                nn.GELU()
+                nn.GELU(),
                 nn.Linear(ftr_dim, projection_dim)
             )
         elif projection == '':
