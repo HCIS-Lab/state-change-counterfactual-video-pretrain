@@ -338,8 +338,12 @@ class SpaceTimeTransformer(nn.Module):
         x = self.norm(x)
         spatial_temp_patches = x[:,1:]
         # b, tokens, c
-        spatial_temp_patches = spatial_temp_patches.reshape(b, f, H, W, channels)
-        temp_patches = spatial_temp_patches.mean(dim=(2, 3))
+        c = x.shape[-1]
+        print('spatial_temp_patches:', spatial_temp_patches.shape)
+        spatial_temp_patches = spatial_temp_patches.reshape(b, f, n, c)
+        print('spatial_temp_patches_reshape:', spatial_temp_patches.shape)
+        temp_patches = spatial_temp_patches.mean(dim=2)
+        print('temp_patches:', temp_patches.shape)
         x = x[:, 0]
         x = self.pre_logits(x)
 
