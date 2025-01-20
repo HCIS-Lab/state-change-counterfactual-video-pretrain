@@ -86,10 +86,6 @@ class InfoNCE(nn.Module):
         # video-text only
         align_sim = sim_matrix(video_embeds, narration)
         i_sm = F.softmax(align_sim/self.temperature, dim=1)
-        # mask_bool = mask_diag > 0
-        # idiag = torch.log(torch.sum(i_sm * mask_bool, dim=1) )
-        # loss_align = idiag.sum() / len(idiag)
-        # loss_align = -1 * loss_align
         idiag = torch.log(torch.diag(i_sm) + 1e-8)
         loss_align = -idiag.mean()
         loss_dict['align'] = loss_align.item()
