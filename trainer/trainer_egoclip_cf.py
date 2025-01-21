@@ -95,6 +95,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         print(epoch)
         self.model.train()
         total_loss = [0] * len(self.data_loader)
+        print('learning_rate: ', self.args.learning_rate1)
         # total_metrics = np.zeros(len(self.metrics))
         for loader in self.data_loader:
             loader.train_sampler.set_epoch(epoch)
