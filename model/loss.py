@@ -59,7 +59,23 @@ class EgoNCE(nn.Module):
         loss_j = jdiag.sum() / len(jdiag)
         return - loss_i - loss_j
 
+class MomentumQueue:
+    def __init__(self, size, dim):
+        self.queue = torch.randn(size, dim)  # Initialize queue with random embeddings
+        self.queue = F.normalize(self.queue, dim=1)  # Normalize
+        self.ptr = 0  # Pointer to track queue position
 
+    @torch.no_grad()
+    def enqueue(self, new_embeds):
+        """Add new embeddings to the queue (FIFO)"""
+        batch_size = new_embeds.size(0)
+        self.queue[self.ptr:self.ptr + batch_size] = new_embeds
+        self.ptr = (self.ptr + batch_size) % self.queue.size(0)
+
+    def get_negatives(self, batch_size):
+        """Sample negatives from the queue"""
+        idx = torch.randint(0, self.queue.size(0), (batch_size,))
+        return self.queue[idx]
 
 # https://github.com/facebookresearch/r3m/blob/main/r3m/trainer.py
 class InfoNCE(nn.Module):
@@ -67,7 +83,7 @@ class InfoNCE(nn.Module):
         super().__init__()
         self.temperature = temperature
         self.num_neg = num_negatives
-
+        self.queue = MomentumQueue(65536, 786)
     def forward(self, text_embeds, video_embeds, frame_embeds):
         loss_dict = {}
         epsilon = 1e-8
@@ -92,8 +108,7 @@ class InfoNCE(nn.Module):
 
         ## Within Video TCN Loss
         ## Number of negative video examples to use
-        bs = frame_embeds.shape[0]
-        num_frame = frame_embeds.shape[1]
+        bs, num_frame, _ = frame_embeds.shape
         frame_embeds = frame_embeds.reshape(bs, num_frame, -1)
         f0 = frame_embeds[:, 0]
         f1 = frame_embeds[:, 1]
@@ -118,16 +133,18 @@ class InfoNCE(nn.Module):
 
         ## For the specified number of negatives from other videos
         ## Add it as a negative
-        neg0 = []
-        neg3 = []
-        for _ in range(self.num_neg):
-            f0_shuf = f0[torch.randperm(f0.size()[0])]
-            f3_shuf = f3[torch.randperm(f3.size()[0])]
-            neg0.append(sim(f0, f0_shuf))
-            neg3.append(sim(f3, f3_shuf))
-        neg0 = torch.stack(neg0, -1)
-        neg3 = torch.stack(neg3, -1)
+        # neg0 = []
+        # neg3 = []
+        # for _ in range(self.num_neg):
+        #     f0_shuf = f0[torch.randperm(f0.size()[0])]
+        #     f3_shuf = f3[torch.randperm(f3.size()[0])]
+        #     neg0.append(sim(f0, f0_shuf))
+        #     neg3.append(sim(f3, f3_shuf))
+        # neg0 = torch.stack(neg0, -1)
+        # neg3 = torch.stack(neg3, -1)
 
+        neg0 = sim(f0, self.queue.get_negatives(bs))
+        neg3 = sim(f3, self.queue.get_negatives(bs))
         ## frame TCN Loss
         # denom_tcn_0 = epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) +
         #         torch.exp(sim_0_3) + 
@@ -155,6 +172,8 @@ class InfoNCE(nn.Module):
         
         tcn = ((tcn_3 + tcn_0) / 2.0).mean()
         loss_dict['tcn'] = tcn.item()
+        self.queue.enqueue(f0.detach())
+        self.queue.enqueue(f3.detach())
 
         loss = loss_align + tcn
         return loss_dict, loss
