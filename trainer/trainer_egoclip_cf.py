@@ -8,6 +8,8 @@
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
+
 from tqdm.auto import tqdm
 import torch.distributed as dist
 from datetime import datetime
@@ -114,12 +116,12 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
 
                 # # data['text'] = {key: val.to(self.device) for key, val in data['text'].items()}
                 # data['text'] = data['narration'].to(self.device)
-                data['narration'] =  data['narration'].to(self.device)
-                data['before'] = data['before'].to(self.device)
-                data['after'] = data['after'].to(self.device)
-                data['CF1'] = data['CF1'].to(self.device)
-                data['CF2'] = data['CF2'].to(self.device)
-                data['CF3'] = data['CF3'].to(self.device)
+                data['narration'] = data['narration'].to(self.device)
+                data['before'] = F.normalize(data['before'].to(self.device), dim=-1)
+                data['after'] = F.normalize(data['after'].to(self.device), dim=-1)
+                data['CF1'] = F.normalize(data['CF1'].to(self.device), dim=-1)
+                data['CF2'] = F.normalize(data['CF2'].to(self.device), dim=-1)
+                data['CF3'] = F.normalize(data['CF3'].to(self.device), dim=-1)
                 data['video'] = data['video'].to(self.device)
 
                 data['narration'].requires_grad = False
