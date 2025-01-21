@@ -83,7 +83,7 @@ class InfoNCE(nn.Module):
         super().__init__()
         self.temperature = temperature
         self.num_neg = num_negatives
-        self.queue = MomentumQueue(65536, 786)
+        self.queue = MomentumQueue(65536, 768)
     def forward(self, text_embeds, video_embeds, frame_embeds):
         loss_dict = {}
         epsilon = 1e-8
