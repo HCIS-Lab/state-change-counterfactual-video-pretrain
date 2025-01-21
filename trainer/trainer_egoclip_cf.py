@@ -120,7 +120,13 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 data['CF2'] = data['CF2'].to(self.device)
                 data['CF3'] = data['CF3'].to(self.device)
                 data['video'] = data['video'].to(self.device)
-                
+
+                data['narration'].requires_grad = False
+                data['before'].requires_grad = False
+                data['after'].requires_grad = False
+                data['CF1'].requires_grad = False
+                data['CF2'].requires_grad = False
+                data['CF3'].requires_grad = False
                 # n_embeds = data['noun_vec'].to(self.device)
                 # v_embeds = data['verb_vec'].to(self.device)
 
@@ -197,11 +203,109 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 tl = total_loss[dl_idx] / self.len_epoch
                 self.writer.add_scalar(f'Loss_training/loss_total_{dl_idx}', tl, epoch-1)
 
-        
+        # if self.do_validation:
+        #     val_log = self._valid_epoch(epoch)
+        #     if self.args.rank == 0:
+        #         log.update(val_log)
 
         self._adjust_learning_rate(self.optimizer, epoch, self.args)
 
         return log
+
+    def _valid_epoch(self, epoch):
+        """
+        Validate after training an epoch
+
+        :return: A log that contains information about validation
+
+        Note:
+            The validation metrics in log must have the key 'val_metrics'.
+        """
+        self.model.eval()
+        total_val_loss = [0] * len(self.valid_data_loader)
+        total_val_metrics = [np.zeros(len(self.metrics))] * len(self.valid_data_loader)
+
+        gt_arr = {x: [] for x in range(len(self.valid_data_loader))}
+        pred_arr = {x: [] for x in range(len(self.valid_data_loader))}
+        type_arr = {x: [] for x in range(len(self.valid_data_loader))}
+
+        with torch.no_grad():
+            # for validation we switch the nested loop order, because alternate batches not needed...
+            # ... and dataloaders can be of different length
+            for dl_idx, dl in enumerate(self.valid_data_loader):
+                for batch_idx, data in enumerate(tqdm(dl)):
+                    data['video'] = data['video'][0]  # remove batch
+                    data['text'] = data['text']
+
+                    if self.tokenizer is not None:
+                        data['text'] = self.tokenizer(data['text'], return_tensors='pt', padding=True, truncation=True)
+                    data['text'] = {key: val.to(self.device) for key, val in data['text'].items()}
+                    data['video'] = data['video'].to(self.device)
+                    text_embed, vid_embed = self.model(data, return_embeds=True)
+
+                    data_gt = data['correct'][0].to(self.device).unsqueeze(0)
+                    data_pred = sim_matrix(text_embed, vid_embed)
+                    data_type = data['type'][0].to(self.device).unsqueeze(0)
+
+                    # if isinstance(self.model, nn.DataParallel) and data["video"].shape[0] < len(self.model.device_ids):
+                    # Note that if some batch has size smaller than the GPU size, `DataParallel` will fail.
+                    # It can happen with the last batch of the dataset, depending on its size.
+                    # This avoids using `DataParallel` in this case, and supposes the entire batch fits in one GPU.
+                    #    text_embed, vid_embed = self.model.module(data, return_embeds=True)
+                    # else:
+                    #    text_embed, vid_embed = self.model(data, return_embeds=True)
+                    data_gt_all = [torch.zeros_like(data_gt) for _ in range(self.n_gpu)]
+                    torch.distributed.all_gather(data_gt_all, data_gt)
+                    data_gt_all = torch.cat(data_gt_all, dim=0)
+
+                    data_pred_all = [torch.zeros_like(data_pred) for _ in range(self.n_gpu)]
+                    torch.distributed.all_gather(data_pred_all, data_pred)
+                    data_pred_all = torch.cat(data_pred_all, dim=0)
+
+                    data_type_all = [torch.zeros_like(data_type) for _ in range(self.n_gpu)]
+                    torch.distributed.all_gather(data_type_all, data_type)
+                    data_type_all = torch.cat(data_type_all, dim=0)
+
+                    gt_arr[dl_idx].append(data_gt_all.cpu())
+                    pred_arr[dl_idx].append(data_pred_all.cpu())
+                    type_arr[dl_idx].append(data_type_all.cpu())
+
+            if self.writer is not None and self.args.rank == 0:
+                for dl_idx in range(len(self.valid_data_loader)):
+                    tl = total_val_loss[dl_idx] / len(self.valid_data_loader[dl_idx])
+                    self.writer.add_scalar(f'Loss_val/loss_total_{dl_idx}', tl, epoch-1)
+
+        for dl_idx in range(len(self.valid_data_loader)):
+            nested_metrics = {x: {} for x in range(len(self.valid_data_loader))}
+
+            gt_arr_cat = torch.cat(gt_arr[dl_idx])
+            pred_arr_cat = torch.cat(pred_arr[dl_idx])
+            type_cat = torch.cat(type_arr[dl_idx])
+
+            for metric in self.metrics:
+                metric_name = metric.__name__
+                res = metric(pred_arr_cat, gt_arr_cat, type_cat)
+                if self.args.rank == 0:
+                    self.logger.info(
+                        verbose(epoch=epoch, metrics=res, name=self.valid_data_loader[dl_idx].dataset_name))
+                nested_metrics[dl_idx][metric_name] = res
+
+                if self.writer is not None and self.args.rank == 0:
+                    to_write = format_nested_metrics_for_writer(res, mode=metric_name,
+                                                                name=self.valid_data_loader[dl_idx].dataset_name)
+                    # for key, val in to_write.items():
+                    #     self.writer.log_scalar(key, val)
+                    for key, val in to_write.items():
+                        key = key.replace('[', '_').replace(']', '_')
+                        self.writer.add_scalar(f'Val_metrics_{dl_idx}/{key}', val, epoch - 1)
+
+        res_dict = {}
+        if self.args.rank == 0:
+            res_dict = {f'val_loss_{dl_idx}': total_val_loss[dl_idx] / len(self.valid_data_loader[dl_idx])
+                        for dl_idx in range(len(self.valid_data_loader))}
+            res_dict['nested_val_metrics'] = nested_metrics
+
+        return res_dict
 
     def _progress(self, batch_idx, dl_idx):
         base = '[{}/{} ({:.0f}%)]'
