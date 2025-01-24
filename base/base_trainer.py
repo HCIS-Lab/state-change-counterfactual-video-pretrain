@@ -280,7 +280,7 @@ class Multi_BaseTrainer_dist:
         self.monitor = cfg_trainer.get('monitor', 'off')
         self.init_val = cfg_trainer.get('init_val', True)
         self.agg_train_freq = cfg_trainer.get('aggregation_freq', None)
-
+        self.best_loss = float("inf")
         # configuration to monitor model performance and save best
         # if self.monitor == 'off':
         #     self.mnt_mode = 'off'
@@ -333,12 +333,16 @@ class Multi_BaseTrainer_dist:
             # pass
 
         for epoch in range(self.start_epoch, self.epochs + 1):
-            result = self._train_epoch(epoch)
+            result, loss_avg = self._train_epoch(epoch)
 
             # save logged informations into log dict
 
             # save logged informations into log dict
+            best = False
             log = {'epoch': epoch}
+            if self.best_loss > loss_avg:
+                self.best_loss = loss_avg
+                best = True
             # for key, value in result.items():
             #   if self.args.rank == 0:
             #     if key == 'metrics':
