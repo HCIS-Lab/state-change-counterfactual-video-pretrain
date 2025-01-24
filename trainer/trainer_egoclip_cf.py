@@ -16,6 +16,8 @@ from datetime import datetime
 
 from base import Multi_BaseTrainer_dist
 from model.model import sim_matrix
+from model.loss import MomentumQueue
+
 from utils import inf_loop
 
 class AllGather_multi(torch.autograd.Function):
@@ -97,14 +99,18 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         print(epoch)
         self.model.train()
         total_loss = [0] * len(self.data_loader)
+        loss_avg = 0
+        num_data = 0
         print('learning_rate: ', self.args.learning_rate1)
         # total_metrics = np.zeros(len(self.metrics))
         for loader in self.data_loader:
             loader.train_sampler.set_epoch(epoch)
+        self.queue = MomentumQueue(768, queue_size=8192, device=self.device)
         for batch_idx, data_li in enumerate(zip(*self.data_loader)):
             if (batch_idx + 1) * self.total_batch_sum > self.max_samples_per_epoch:
                 break
             for dl_idx, data in enumerate(data_li):
+                num_data +=1
                 # then assume we must tokenize the input, e.g. its a string
                 # if 'video_neg' in data.keys():  # w/ negative sampling
                 #     # data['text'] = data['text'] + data['text_neg']
@@ -113,9 +119,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 #     # data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
                 #     # data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
-
-                # # data['text'] = {key: val.to(self.device) for key, val in data['text'].items()}
-                # data['text'] = data['narration'].to(self.device)
                 data['narration'] = data['narration'].to(self.device)
                 data['before'] = F.normalize(data['before'].to(self.device), dim=-1)
                 data['after'] = F.normalize(data['after'].to(self.device), dim=-1)
@@ -133,12 +136,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 # n_embeds = data['noun_vec'].to(self.device)
                 # v_embeds = data['verb_vec'].to(self.device)
 
-                self.optimizer.zero_grad()
-                with torch.set_grad_enabled(True):
-                    video_embeds, frame_embeds = self.model(data)
-                    video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
-                    frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
-                    # text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
+                with torch.no_grad():  # Avoid unnecessary gradient tracking
                     narration = self.allgather(data['narration'], self.n_gpu, self.args)
                     before = self.allgather(data['before'], self.n_gpu, self.args)
                     after = self.allgather(data['after'], self.n_gpu, self.args)
@@ -146,6 +144,12 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     CF2 = self.allgather(data['CF2'], self.n_gpu, self.args)
                     CF3 = self.allgather(data['CF3'], self.n_gpu, self.args)
                     text_embeds = [narration, before, after, CF1, CF2, CF3]
+                self.optimizer.zero_grad()
+                with torch.set_grad_enabled(True):
+                    video_embeds, frame_embeds = self.model(data)
+                    video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
+                    frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
+
                     # n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
                     # v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
 
@@ -157,10 +161,14 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     #     # loss = self.loss(output, sim_v, sim_n)
                     # else:
                     # loss = self.loss(output)
-                    loss_dict, loss = self.loss(text_embeds, video_embeds, frame_embeds)
-                loss.backward()
+                    loss_dict, loss, queue = self.loss(text_embeds, video_embeds, frame_embeds, self.queue)
+                    self.queue = queue
 
+                loss.backward()
                 self.optimizer.step()
+
+                with torch.no_grad():
+                    self.queue.update(video_embeds, narration)
 
                 if self.writer is not None and self.args.rank == 0:
                     # self.writer.log_scalar(f'loss_train_{dl_idx}', loss.detach().item())
@@ -170,7 +178,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     self.writer.add_scalar(f'Video-text Align_Loss_training/loss_{dl_idx}', loss_dict['align'], final_total)
                     self.writer.add_scalar(f'TCN Loss_training/loss_{dl_idx}', loss_dict['tcn'], final_total)
                 total_loss[dl_idx] += loss.detach().item()
-
+                loss_avg += oss.detach().item()
                 # if batch_idx % self.log_step == 0 and self.args.local_rank == 0:
                 if batch_idx % self.log_step == 0 and self.args.rank == 0:
                     self.logger.info('[{}] Train Epoch: {} dl{} {} Loss: {:.6f}'.format(
@@ -199,7 +207,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         log = {
             f'loss_{dl_idx}': total_loss[dl_idx] / self.len_epoch for dl_idx in range(len(self.data_loader))
         }
-
+        loss_avg = loss_avg/num_data
 
         if self.writer is not None and self.args.rank == 0:
             for dl_idx in range(len(self.data_loader)):
@@ -213,7 +221,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
 
         self._adjust_learning_rate(self.optimizer, epoch, self.args)
 
-        return log
+        return log, loss_avg
 
     def _valid_epoch(self, epoch):
         """
