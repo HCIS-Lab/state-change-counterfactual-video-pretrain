@@ -4,21 +4,26 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+# our command:
+
+# python -m torch.distributed.launch  --nnodes 1 --node_rank 0 --nproc_per_node 8  --master_port 8081  run/train_egoclip_cf.py --config configs/pt/egoclip_cf.json --rank 0
 
 import os
 import argparse
 import collections
 import transformers
 from sacred import Experiment
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 import data_loader.data_loader as module_data
 import model.loss as module_loss
 import model.metric as module_metric
-import model.model as module_arch
+import model.counterfactual as module_arch
 import utils.visualizer as module_vis
 from parse_config import ConfigParser
-from trainer import Multi_Trainer_dist
+from trainer import Multi_Trainer_dist_CF
 from utils.util import replace_nested_dict_item
 from tensorboardX import SummaryWriter
 
@@ -92,7 +97,7 @@ def run(config, args):
     trainer = Multi_Trainer_dist_CF(args, model, loss, optimizer,
                       config=config,
                       data_loader=data_loader,
-                      valid_data_loader=valid_data_loader,
+                    #   valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler,
                       visualizer=visualizer,
                       writer=writer,
