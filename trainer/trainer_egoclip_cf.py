@@ -178,7 +178,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     self.writer.add_scalar(f'Video-text Align_Loss_training/loss_{dl_idx}', loss_dict['align'], final_total)
                     self.writer.add_scalar(f'TCN Loss_training/loss_{dl_idx}', loss_dict['tcn'], final_total)
                 total_loss[dl_idx] += loss.detach().item()
-                loss_avg += oss.detach().item()
+                loss_avg += loss.detach().item()
                 # if batch_idx % self.log_step == 0 and self.args.local_rank == 0:
                 if batch_idx % self.log_step == 0 and self.args.rank == 0:
                     self.logger.info('[{}] Train Epoch: {} dl{} {} Loss: {:.6f}'.format(
@@ -200,7 +200,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                         self._progress(batch_idx, dl_idx),
                         loss_dict['tcn']))
 
-                self.optimizer.zero_grad()
             if batch_idx == self.len_epoch:
                 break
 
