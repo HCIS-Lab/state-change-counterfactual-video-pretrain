@@ -120,11 +120,11 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 #     # data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
                 data['narration'] = data['narration'].to(self.device)
-                data['before'] = F.normalize(data['before'].to(self.device), dim=-1)
-                data['after'] = F.normalize(data['after'].to(self.device), dim=-1)
-                data['CF1'] = F.normalize(data['CF1'].to(self.device), dim=-1)
-                data['CF2'] = F.normalize(data['CF2'].to(self.device), dim=-1)
-                data['CF3'] = F.normalize(data['CF3'].to(self.device), dim=-1)
+                data['before'] = data['before'].to(self.device)
+                data['after'] = data['after'].to(self.device)
+                data['CF1'] = data['CF1'].to(self.device)
+                data['CF2'] = data['CF2'].to(self.device)
+                data['CF3'] = data['CF3'].to(self.device)
                 data['video'] = data['video'].to(self.device)
 
                 data['narration'].requires_grad = False
@@ -163,7 +163,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     # loss = self.loss(output)
                     loss_dict, loss, queue = self.loss(text_embeds, video_embeds, frame_embeds, self.queue)
                     self.queue = queue
-
                 loss.backward()
                 self.optimizer.step()
 
