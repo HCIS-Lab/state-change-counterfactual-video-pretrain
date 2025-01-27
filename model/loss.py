@@ -59,23 +59,46 @@ class EgoNCE(nn.Module):
         loss_j = jdiag.sum() / len(jdiag)
         return - loss_i - loss_j
 
-class MomentumQueue:
-    def __init__(self, size, dim):
-        self.queue = torch.randn(size, dim)  # Initialize queue with random embeddings
-        self.queue = F.normalize(self.queue, dim=1)  # Normalize
-        self.ptr = 0  # Pointer to track queue position
+class MomentumQueue(nn.Module):
+    def __init__(self, embed_dim, queue_size=8192, momentum=0.999, device="cuda"):
+        super().__init__()
+        self.queue_size = queue_size
+        self.momentum = momentum
+        self.device = device  # Store the device
+
+        # Initialize queues and move to device
+        self.register_buffer("video_queue", torch.randn(queue_size, embed_dim).to(device))
+        self.register_buffer("text_queue", torch.randn(queue_size, embed_dim).to(device))
+
+        # Normalize queues
+        self.video_queue = F.normalize(self.video_queue, dim=1)
+        self.text_queue = F.normalize(self.text_queue, dim=1)
+
+        # Pointer for queue position
+        self.register_buffer("ptr", torch.zeros(1, dtype=torch.long).to(device))
 
     @torch.no_grad()
-    def enqueue(self, new_embeds):
-        """Add new embeddings to the queue (FIFO)"""
-        batch_size = new_embeds.size(0)
-        self.queue[self.ptr:self.ptr + batch_size] = new_embeds
-        self.ptr = (self.ptr + batch_size) % self.queue.size(0)
+    def update(self, new_video_embeds, new_text_embeds):
+        """
+        Update the queue with new embeddings, replacing the oldest ones.
+        """
+        batch_size = new_video_embeds.shape[0]
+        ptr = int(self.ptr)  # Get current pointer position
 
-    def get_negatives(self, batch_size):
-        """Sample negatives from the queue"""
-        idx = torch.randint(0, self.queue.size(0), (batch_size,))
-        return self.queue[idx]
+        # Move new embeddings to the same device
+        new_video_embeds = new_video_embeds.to(self.device)
+        new_text_embeds = new_text_embeds.to(self.device)
+
+        # Replace old entries with new embeddings
+        self.video_queue[ptr : ptr + batch_size] = new_video_embeds
+        self.text_queue[ptr : ptr + batch_size] = new_text_embeds
+
+        # Update pointer (FIFO behavior)
+        self.ptr[0] = (ptr + batch_size) % self.queue_size
+
+    def get_queue(self):
+        """Retrieve stored negative samples from the queue."""
+        return self.video_queue, self.text_queue
 
 # https://github.com/facebookresearch/r3m/blob/main/r3m/trainer.py
 class InfoNCE(nn.Module):
@@ -83,8 +106,9 @@ class InfoNCE(nn.Module):
         super().__init__()
         self.temperature = temperature
         self.num_neg = num_negatives
-        self.queue = MomentumQueue(65536, 768)
-    def forward(self, text_embeds, video_embeds, frame_embeds):
+        # self.queue = MomentumQueue(65536, 768)
+
+    def forward(self, text_embeds, video_embeds, frame_embeds, queue):
         loss_dict = {}
         epsilon = 1e-8
         narration, before, after, CF1, CF2, CF3 = text_embeds
@@ -100,7 +124,12 @@ class InfoNCE(nn.Module):
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
 
         # video-text only
-        align_sim = sim_matrix(video_embeds, narration)
+        video_queue, text_queue = queue.get_queue()
+        all_video_embeds = torch.cat([video_embeds, video_queue.detach()], dim=0)
+        all_text_embeds = torch.cat([narration, text_queue.detach()], dim=0)
+        align_sim = sim_matrix(video_embeds, all_text_embeds)  # Shape: (B, B + Queue_Size)
+
+        # align_sim = sim_matrix(video_embeds, narration)
         i_sm = F.softmax(align_sim/self.temperature, dim=1)
         idiag = torch.log(torch.diag(i_sm) + 1e-8)
         loss_align = -idiag.mean()
@@ -131,8 +160,8 @@ class InfoNCE(nn.Module):
         sim_3_cf2 = sim(f3, CF2)
         sim_3_cf3 = sim(f3, CF3)
 
-        ## For the specified number of negatives from other videos
-        ## Add it as a negative
+        # For the specified number of negatives from other videos
+        # Add it as a negative
         # neg0 = []
         # neg3 = []
         # for _ in range(self.num_neg):
@@ -142,14 +171,24 @@ class InfoNCE(nn.Module):
         #     neg3.append(sim(f3, f3_shuf))
         # neg0 = torch.stack(neg0, -1)
         # neg3 = torch.stack(neg3, -1)
+        
+        neg0 = []
+        neg3 = []
+        for _ in range(self.num_neg):
+            while True:
+                f0_shuf = f0[torch.randperm(f0.size(0))]
+                if not torch.equal(f0, f0_shuf) and not torch.all(f0 == f0_shuf.sort()[0]):
+                    break
+            while True:
+                f3_shuf = f3[torch.randperm(f3.size(0))]
+                if not torch.equal(f3, f3_shuf) and not torch.all(f3 == f3_shuf.sort()[0]):
+                    break
+            
+            neg0.append(sim(f0, f0_shuf))
+            neg3.append(sim(f3, f3_shuf))
 
-        neg0 = sim(f0, self.queue.get_negatives(bs))
-        neg3 = sim(f3, self.queue.get_negatives(bs))
-        ## frame TCN Loss
-        # denom_tcn_0 = epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) +
-        #         torch.exp(sim_0_3) + 
-        #         torch.exp(sim_0_after) + torch.exp(sim_0_cf1) + torch.exp(sim_0_cf2) + torch.exp(sim_0_cf3) +
-        #         torch.exp(neg0).sum(-1)
+        neg0 = torch.stack(neg0, -1)
+        neg3 = torch.stack(neg3, -1)
 
         denom_tcn_0 = epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) + \
               torch.exp(sim_0_3) + torch.exp(sim_0_after) + \
@@ -164,19 +203,14 @@ class InfoNCE(nn.Module):
         tcn_0 = -torch.log((torch.exp(sim_0_1) + epsilon) / denom_tcn_0) - torch.log((torch.exp(sim_0_before) + epsilon) / denom_tcn_0)
         tcn_3 = -torch.log((torch.exp(sim_3_2) + epsilon) / denom_tcn_3) - torch.log((torch.exp(sim_3_after) + epsilon) / denom_tcn_3)
         
-        # tcn_0 = -( torch.log(epsilon + torch.exp(sim_0_1) / denom_tcn_0) ) - ( torch.log(epsilon + torch.exp(sim_0_before) / denom_tcn_0) )
         tcn_0 /= 2
-        # tcn_3 = -( torch.log(epsilon + torch.exp(sim_3_2) / denom_tcn_3) ) - ( torch.log(epsilon + torch.exp(sim_3_after) / denom_tcn_3) )
         tcn_3 /= 2
-
         
         tcn = ((tcn_3 + tcn_0) / 2.0).mean()
         loss_dict['tcn'] = tcn.item()
-        self.queue.enqueue(f0.detach())
-        self.queue.enqueue(f3.detach())
 
         loss = loss_align + tcn
-        return loss_dict, loss
+        return loss_dict, loss, queue
 
 def sim(tensor1, tensor2):
     cs = torch.nn.CosineSimilarity(1)
