@@ -35,7 +35,7 @@ class EgoClip_CF(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
             self.frame_sample = 'rand'
 
             # with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
@@ -45,7 +45,7 @@ class EgoClip_CF(TextVideoDataset):
             append_summary_baseline = False #TODO: Move to config
             if append_summary_baseline:
                 summary_target_splits_fp = 'egosummary_full.csv'
-                self.summary_metadata = pd.read_csv(os.path.join(self.meta_dir, summary_target_splits_fp), sep='\t', on_bad_lines='skip')
+                self.summary_metadata = pd.read_csv(os.path.join(self.meta_dir, summary_target_splits_fp), sep='\t',error_bad_lines=False)
                 print('Assigning summary duration to one of the clips...')
                 for summary_idx in range(len(self.summary_metadata)):
                     self.summary_metadata.loc[summary_idx, "clip_start"] = random.uniform(0.0, self.summary_metadata.iloc[summary_idx]['clip_start']-4.0)

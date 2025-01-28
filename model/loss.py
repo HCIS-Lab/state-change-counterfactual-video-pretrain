@@ -106,6 +106,7 @@ class InfoNCE(nn.Module):
         super().__init__()
         self.temperature = temperature
         self.num_neg = num_negatives
+
         # self.queue = MomentumQueue(65536, 768)
 
     def forward(self, text_embeds, video_embeds, frame_embeds, queue):
@@ -122,17 +123,39 @@ class InfoNCE(nn.Module):
         # mask_diag = torch.eye(video_embeds.shape[0]).cuda()
 
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
-
+        assert video_embeds.requires_grad
+        assert frame_embeds.requires_grad
         # video-text only
-        video_queue, text_queue = queue.get_queue()
-        all_video_embeds = torch.cat([video_embeds, video_queue.detach()], dim=0)
-        all_text_embeds = torch.cat([narration, text_queue.detach()], dim=0)
-        align_sim = sim_matrix(video_embeds, all_text_embeds)  # Shape: (B, B + Queue_Size)
+        # video_queue, text_queue = queue.get_queue()
+        # all_video_embeds = torch.cat([video_embeds, video_queue.detach()], dim=0)
+        # all_text_embeds = torch.cat([narration, text_queue.detach()], dim=0)
+        # align_sim = sim_matrix(video_embeds, all_text_embeds)  # Shape: (B, B + Queue_Size)
+        
+        # print("video_embeds ", video_embeds.shape)
+        # print("narration ", narration.shape)
+        align_sim = sim_matrix(video_embeds, narration)
 
-        # align_sim = sim_matrix(video_embeds, narration)
-        i_sm = F.softmax(align_sim/self.temperature, dim=1)
-        idiag = torch.log(torch.diag(i_sm) + 1e-8)
-        loss_align = -idiag.mean()
+        mask = torch.eye(align_sim.shape[-1]).detach().cuda()
+        unmask = (mask != 1)*1
+
+        # denom0 = align_sim * unmask
+        exp_align = torch.exp(align_sim/self.temperature)
+        denom0 = exp_align*unmask
+        denom = torch.sum(denom0, dim=-1)
+        exp_align1 = torch.sum( exp_align*mask, dim=-1 )
+
+        # print("exp_align ", exp_align.shape)
+        # print("denom ", denom.shape)
+        i_sim = exp_align1 / denom
+
+        # print("align_sim ", align_sim.shape)
+        # i_sm = F.softmax( (align_sim*unmask)/self.temperature, dim=1)
+        # print("i_sm", i_sm.shape)
+
+        # idiag = -torch.log(torch.sum((i_sm * mask), dim=-1) + 1e-8)
+        idiag = -torch.log(i_sim)
+        # print("idaig ", idiag.shape)
+        loss_align = idiag.mean()
         loss_dict['align'] = loss_align.item()
 
         ## Within Video TCN Loss
@@ -172,39 +195,49 @@ class InfoNCE(nn.Module):
         # neg0 = torch.stack(neg0, -1)
         # neg3 = torch.stack(neg3, -1)
         
-        neg0 = []
-        neg3 = []
-        for _ in range(self.num_neg):
-            while True:
-                f0_shuf = f0[torch.randperm(f0.size(0))]
-                if not torch.equal(f0, f0_shuf) and not torch.all(f0 == f0_shuf.sort()[0]):
-                    break
-            while True:
-                f3_shuf = f3[torch.randperm(f3.size(0))]
-                if not torch.equal(f3, f3_shuf) and not torch.all(f3 == f3_shuf.sort()[0]):
-                    break
+        # neg0 = []
+        # neg3 = []
+        # for _ in range(self.num_neg):
+        #     while True:
+        #         f0_shuf = f0[torch.randperm(f0.size(0))]
+        #         if not torch.equal(f0, f0_shuf) and not torch.all(f0 == f0_shuf.sort()[0]):
+        #             break
+        #     while True:
+        #         f3_shuf = f3[torch.randperm(f3.size(0))]
+        #         if not torch.equal(f3, f3_shuf) and not torch.all(f3 == f3_shuf.sort()[0]):
+        #             break
             
-            neg0.append(sim(f0, f0_shuf))
-            neg3.append(sim(f3, f3_shuf))
+        #     neg0.append(sim(f0, f0_shuf))
+        #     neg3.append(sim(f3, f3_shuf))
 
-        neg0 = torch.stack(neg0, -1)
-        neg3 = torch.stack(neg3, -1)
+        # neg0 = torch.stack(neg0, -1)
+        # neg3 = torch.stack(neg3, -1)
 
-        denom_tcn_0 = epsilon + torch.exp(sim_0_1) + torch.exp(sim_0_before) + \
-              torch.exp(sim_0_3) + torch.exp(sim_0_after) + \
-              torch.exp(sim_0_cf1) + torch.exp(sim_0_cf2) + torch.exp(sim_0_cf3) + \
-              (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
+        denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+              torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
+              torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) #+ \
+            #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
         
-        denom_tcn_3 = epsilon + torch.exp(sim_3_2) + torch.exp(sim_3_after) + \
-                torch.exp(sim_3_0) + torch.exp(sim_3_before) + \
-                torch.exp(sim_3_cf1) + torch.exp(sim_3_cf2) + torch.exp(sim_3_cf3) + \
-                (torch.exp(neg3) / self.num_neg).sum(-1)
+        # print("denom_tcn_0", denom_tcn_0.shape)
 
-        tcn_0 = -torch.log((torch.exp(sim_0_1) + epsilon) / denom_tcn_0) - torch.log((torch.exp(sim_0_before) + epsilon) / denom_tcn_0)
-        tcn_3 = -torch.log((torch.exp(sim_3_2) + epsilon) / denom_tcn_3) - torch.log((torch.exp(sim_3_after) + epsilon) / denom_tcn_3)
+        denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
+                torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
+                # (torch.exp(neg3) / self.num_neg).sum(-1)
+
+        # print("denom_tcn_3", denom_tcn_3.shape)
+
+        tcn_0 = -torch.log((torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0) - torch.log((torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0)
+        tcn_3 = -torch.log((torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3) - torch.log((torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3)
         
         tcn_0 /= 2
         tcn_3 /= 2
+
+        # print("tcn_0", tcn_0)
+        # print("tcn_3", tcn_3)
+
+        # print("tcn_0", tcn_0.shape)
+        # print("tcn_3", tcn_3.shape)
         
         tcn = ((tcn_3 + tcn_0) / 2.0).mean()
         loss_dict['tcn'] = tcn.item()
@@ -224,10 +257,10 @@ def sim_matrix(a, b, eps=1e-8):
     """
     added eps for numerical stability
     """
-    a_n, b_n = a.norm(dim=1)[:, None], b.norm(dim=1)[:, None]
-    a_norm = a / torch.max(a_n, eps * torch.ones_like(a_n))
-    b_norm = b / torch.max(b_n, eps * torch.ones_like(b_n))
-    sim_mt = torch.mm(a_norm, b_norm.transpose(0, 1))
+    # a_n, b_n = a.norm(dim=1)[:, None], b.norm(dim=1)[:, None]
+    a_norm = F.normalize(a, dim=-1) #a / torch.max(a_n, eps * torch.ones_like(a_n))
+    b_norm = F.normalize(b, dim=-1) #b / torch.max(b_n, eps * torch.ones_like(b_n))
+    sim_mt = torch.mm(a_norm, b_norm.T)
     return sim_mt
 
 class EgoMILNCE(nn.Module):

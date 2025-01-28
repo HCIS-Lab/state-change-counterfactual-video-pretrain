@@ -1,6 +1,6 @@
 {
     "name": "EgoClip_CF",
-    "n_gpu": 16,
+    "n_gpu": 4,
     "arch": {
         "type": "CF",
         "args": {
@@ -26,8 +26,8 @@
                     "type": "MultiDistTextVideoDataLoader",
                     "args":{
                         "dataset_name": "EgoClip_CF",
-                        "data_dir": "/N/project/ego4d_vlm/ego4d_chunked/",
-                        "meta_dir": "/N/project/ego4d_vlm/",
+                        "data_dir": "/nfs/wattrel/data/md0/datasets/state_aware/ego4d_chunked/",
+                        "meta_dir": "/nfs/wattrel/data/md0/datasets/state_aware/",
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 8,

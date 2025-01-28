@@ -24,6 +24,10 @@ import torch.utils.data.distributed
 import torchvision.datasets as datasets
 import torchvision.models as models
 
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 import transformers
 from tensorboardX import SummaryWriter
 import data_loader.data_loader as module_data

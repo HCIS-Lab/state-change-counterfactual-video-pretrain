@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 import torch.distributed as dist
 from datetime import datetime
 
-from base import Multi_BaseTrainer_dist
+from base.base_trainer import Multi_BaseTrainer_dist
 from model.model import sim_matrix
 from model.loss import MomentumQueue
 
@@ -61,6 +61,8 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
             # iteration-based training
             self.data_loader = inf_loop(data_loader)
             self.len_epoch = len_epoch
+        print()
+        print("i exist")
 
         self.lr_scheduler = lr_scheduler
         self.visualizer = visualizer

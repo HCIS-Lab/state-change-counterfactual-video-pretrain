@@ -80,7 +80,7 @@ def dataset_loader(dataset_name,
     elif dataset_name == "EgoClip":
         dataset = EgoClip_EgoMCQ(**kwargs)
     elif dataset_name == "EgoClip_CF":
-        dataset = EgoClip_EgoClip_CF(**kwargs)
+        dataset = EgoClip_CF(**kwargs) # here
     elif dataset_name == "EgoAggregation":
         dataset = EgoAggregation(**kwargs)
 

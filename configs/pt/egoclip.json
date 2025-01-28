@@ -10,24 +10,19 @@
                 "num_frames": 16,
                 "pretrained": true,
                 "time_init": "zeros"
-            },
-            // "text_params": {
-            //     "model": "distilbert-base-uncased",
-            //     "pretrained": true,
-            //     "input": "text"
+            }
             },
             "projection": "minimal",
             "load_checkpoint" : ""
-        }
     },
     "data_loader":
             [
                 {
                     "type": "MultiDistTextVideoDataLoader",
                     "args":{
-                        "dataset_name": "EgoClip",
-                        "data_dir": "/N/project/ego4d_vlm/ego4d_chunked/",
-                        "meta_dir": "/N/project/ego4d_vlm/",
+                        "dataset_name": "EgoClip_CF",
+                        "data_dir": "/nfs/wattrel/data/md0/datasets/state_aware/ego4d_chunked/",
+                        "meta_dir": "/nfs/wattrel/data/md0/datasets/state_aware/",
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 32,
