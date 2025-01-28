@@ -14,9 +14,8 @@ from tqdm.auto import tqdm
 import torch.distributed as dist
 from datetime import datetime
 
-from base.base_trainer import Multi_BaseTrainer_dist
+from base.base_trainer import Multi_BaseTrainer
 from model.model import sim_matrix
-from model.loss import MomentumQueue
 
 from utils import inf_loop
 
@@ -38,7 +37,7 @@ class AllGather_multi(torch.autograd.Function):
             None, None,
         )
 
-class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
+class Multi_Trainer_CF(Multi_BaseTrainer):
     """
     Trainer class
 
@@ -107,7 +106,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         # total_metrics = np.zeros(len(self.metrics))
         for loader in self.data_loader:
             loader.train_sampler.set_epoch(epoch)
-        self.queue = MomentumQueue(768, queue_size=8192, device=self.device)
         for batch_idx, data_li in enumerate(zip(*self.data_loader)):
             if (batch_idx + 1) * self.total_batch_sum > self.max_samples_per_epoch:
                 break
@@ -163,13 +161,9 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     #     # loss = self.loss(output, sim_v, sim_n)
                     # else:
                     # loss = self.loss(output)
-                    loss_dict, loss, queue = self.loss(text_embeds, video_embeds, frame_embeds, self.queue)
-                    self.queue = queue
+                    loss_dict, loss = self.loss(text_embeds, video_embeds, frame_embeds)
                 loss.backward()
                 self.optimizer.step()
-
-                with torch.no_grad():
-                    self.queue.update(video_embeds, narration)
 
                 if self.writer is not None and self.args.rank == 0:
                     # self.writer.log_scalar(f'loss_train_{dl_idx}', loss.detach().item())

@@ -243,7 +243,7 @@ class BaseTrainer:
         print("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))
 
 
-class Multi_BaseTrainer_dist:
+class Multi_BaseTrainer:
     """
     Base class for all trainers
     """
