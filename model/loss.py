@@ -95,7 +95,8 @@ class InfoNCE(nn.Module):
         # if self.noun and self.verb:
         #     mask = mask_v * mask_n + mask_diag
 
-        sim_align = F.softmax(sim_align/self.temperature, dim=1)
+        sim_align_i = F.softmax(sim_align/self.temperature, dim=1)
+        sim_align_j = F.softmax(sim_align.t()/self.temperature, dim=1)
 
         mask_diag = torch.eye(sim_align.shape[0]).cuda()
 
@@ -107,9 +108,13 @@ class InfoNCE(nn.Module):
             mask = sim_v + mask_diag
 
         mask_bool = mask > 0
-        align_diag = torch.log(torch.sum(sim_align * mask_bool, dim=1) )
-        loss_align = align_diag.sum() / len(align_diag)
-        loss_align = - loss_align
+
+        align_diag_i = torch.log(torch.sum(sim_align_i * mask_bool, dim=1) )
+        align_diag_j = torch.log(torch.sum(sim_align_j * mask_bool, dim=1) )
+
+        loss_align_i = align_diag_i.sum() / len(align_diag_i)
+        loss_align_j = align_diag_j.sum() / len(align_diag_j)
+        loss_align = - loss_align_i - loss_align_j
         loss_dict['align'] = loss_align.item()
         
         # # ------
