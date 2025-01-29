@@ -96,7 +96,7 @@ class InfoNCE(nn.Module):
         #     mask = mask_v * mask_n + mask_diag
 
         sim_align_i = F.softmax(sim_align/self.temperature, dim=1)
-        sim_align_j = F.softmax(sim_align.t()/self.temperature, dim=1)
+        # sim_align_j = F.softmax(sim_align.t()/self.temperature, dim=1)
 
         mask_diag = torch.eye(sim_align.shape[0]).cuda()
 
@@ -110,11 +110,11 @@ class InfoNCE(nn.Module):
         mask_bool = mask > 0
 
         align_diag_i = torch.log(torch.sum(sim_align_i * mask_bool, dim=1) )
-        align_diag_j = torch.log(torch.sum(sim_align_j * mask_bool, dim=1) )
+        # align_diag_j = torch.log(torch.sum(sim_align_j * mask_bool, dim=1) )
 
         loss_align_i = align_diag_i.sum() / len(align_diag_i)
-        loss_align_j = align_diag_j.sum() / len(align_diag_j)
-        loss_align = - loss_align_i - loss_align_j
+        # loss_align_j = align_diag_j.sum() / len(align_diag_j)
+        loss_align = - loss_align_i #- loss_align_j
         loss_dict['align'] = loss_align.item()
         
         # # ------
