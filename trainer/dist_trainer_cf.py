@@ -145,24 +145,18 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     CF2 = self.allgather(data['CF2'], self.n_gpu, self.args)
                     CF3 = self.allgather(data['CF3'], self.n_gpu, self.args)
                     text_embeds = [narration, before, after, CF1, CF2, CF3]
+
+                    n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
+                    v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
+
                 self.optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
                     video_embeds, frame_embeds = self.model(data)
                     video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
                     frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
-
-                    # n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
-                    # v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
-
-                    # output = sim_matrix(text_embeds, video_embeds)
-
-                    # if self.config['loss']['type'] == 'EgoNCE':
-                    #     # sim_v = sim_matrix(v_embeds, v_embeds)
-                    #     # sim_n = sim_matrix(n_embeds, n_embeds)
-                    #     # loss = self.loss(output, sim_v, sim_n)
-                    # else:
-                    # loss = self.loss(output)
-                    loss_dict, loss = self.loss(text_embeds, video_embeds, frame_embeds)
+                    loss_dict, loss = self.loss(text_embeds, video_embeds, \
+                                                v_embeds, n_embeds, 
+                                                frame_embeds)
                 loss.backward()
                 self.optimizer.step()
 
