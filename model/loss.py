@@ -59,47 +59,6 @@ class EgoNCE(nn.Module):
         loss_j = jdiag.sum() / len(jdiag)
         return - loss_i - loss_j
 
-class MomentumQueue(nn.Module):
-    def __init__(self, embed_dim, queue_size=8192, momentum=0.999, device="cuda"):
-        super().__init__()
-        self.queue_size = queue_size
-        self.momentum = momentum
-        self.device = device  # Store the device
-
-        # Initialize queues and move to device
-        self.register_buffer("video_queue", torch.randn(queue_size, embed_dim).to(device))
-        self.register_buffer("text_queue", torch.randn(queue_size, embed_dim).to(device))
-
-        # Normalize queues
-        self.video_queue = F.normalize(self.video_queue, dim=1)
-        self.text_queue = F.normalize(self.text_queue, dim=1)
-
-        # Pointer for queue position
-        self.register_buffer("ptr", torch.zeros(1, dtype=torch.long).to(device))
-
-    @torch.no_grad()
-    def update(self, new_video_embeds, new_text_embeds):
-        """
-        Update the queue with new embeddings, replacing the oldest ones.
-        """
-        batch_size = new_video_embeds.shape[0]
-        ptr = int(self.ptr)  # Get current pointer position
-
-        # Move new embeddings to the same device
-        new_video_embeds = new_video_embeds.to(self.device)
-        new_text_embeds = new_text_embeds.to(self.device)
-
-        # Replace old entries with new embeddings
-        self.video_queue[ptr : ptr + batch_size] = new_video_embeds
-        self.text_queue[ptr : ptr + batch_size] = new_text_embeds
-
-        # Update pointer (FIFO behavior)
-        self.ptr[0] = (ptr + batch_size) % self.queue_size
-
-    def get_queue(self):
-        """Retrieve stored negative samples from the queue."""
-        return self.video_queue, self.text_queue
-
 # https://github.com/facebookresearch/r3m/blob/main/r3m/trainer.py
 class InfoNCE(nn.Module):
     def __init__(self, temperature=0.05, num_negatives=3):
@@ -107,56 +66,70 @@ class InfoNCE(nn.Module):
         self.temperature = temperature
         self.num_neg = num_negatives
 
-        # self.queue = MomentumQueue(65536, 768)
 
-    def forward(self, text_embeds, video_embeds, frame_embeds, queue):
+    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
         loss_dict = {}
         epsilon = 1e-8
         narration, before, after, CF1, CF2, CF3 = text_embeds
-        narration.requires_grad = False
-        before.requires_grad = False
-        after.requires_grad = False
-        CF1.requires_grad = False
-        CF2.requires_grad = False
-        CF3.requires_grad = False
+        # narration.requires_grad = False
+        # before.requires_grad = False
+        # after.requires_grad = False
+        # CF1.requires_grad = False
+        # CF2.requires_grad = False
+        # CF3.requires_grad = False
+
         # video_text_alignment
         # mask_diag = torch.eye(video_embeds.shape[0]).cuda()
 
-        "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
+        # "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
         assert video_embeds.requires_grad
         assert frame_embeds.requires_grad
         # video-text only
-        # video_queue, text_queue = queue.get_queue()
-        # all_video_embeds = torch.cat([video_embeds, video_queue.detach()], dim=0)
-        # all_text_embeds = torch.cat([narration, text_queue.detach()], dim=0)
-        # align_sim = sim_matrix(video_embeds, all_text_embeds)  # Shape: (B, B + Queue_Size)
-        
-        # print("video_embeds ", video_embeds.shape)
-        # print("narration ", narration.shape)
-        align_sim = sim_matrix(video_embeds, narration)
+        # EgoNCE
+        sim_v = sim_matrix(v_embeds, v_embeds)
+        sim_n = sim_matrix(n_embeds, n_embeds)
+        sim_align = sim_matrix(video_embeds, text_embeds)
+        mask_diag = torch.eye(sim_align.shape[0]).cuda()
+        if self.noun and self.verb:
+            mask = mask_v * mask_n + mask_diag
 
-        mask = torch.eye(align_sim.shape[-1]).detach().cuda()
-        unmask = (mask != 1)*1
-
-        # denom0 = align_sim * unmask
-        exp_align = torch.exp(align_sim/self.temperature)
-        denom0 = exp_align*unmask
-        denom = torch.sum(denom0, dim=-1)
-        exp_align1 = torch.sum( exp_align*mask, dim=-1 )
-
-        # print("exp_align ", exp_align.shape)
-        # print("denom ", denom.shape)
-        i_sim = exp_align1 / denom
-
-        # print("align_sim ", align_sim.shape)
-        # i_sm = F.softmax( (align_sim*unmask)/self.temperature, dim=1)
-        # print("i_sm", i_sm.shape)
-
-        # idiag = -torch.log(torch.sum((i_sm * mask), dim=-1) + 1e-8)
-        idiag = -torch.log(i_sim)
-        # print("idaig ", idiag.shape)
-        loss_align = idiag.mean()
+        sim_align = F.softmax(sim_align/self.temperature, dim=1)
+        mask_bool = mask > 0
+        align_diag = torch.log(torch.sum(sim_align * mask_bool, dim=1) )
+        loss_align = align_diag.sum() / len(align_diag)
+        loss_align = - loss_align
         loss_dict['align'] = loss_align.item()
+        
+        # # ------
+
+        # # print("video_embeds ", video_embeds.shape)
+        # # print("narration ", narration.shape)
+        # align_sim = sim_matrix(video_embeds, narration)
+
+        # mask = torch.eye(align_sim.shape[-1]).detach().cuda()
+        # unmask = (mask != 1)*1
+
+        # # denom0 = align_sim * unmask
+        # exp_align = torch.exp(align_sim/self.temperature)
+        # denom0 = exp_align*unmask
+        # denom = torch.sum(denom0, dim=-1)
+        # exp_align1 = torch.sum( exp_align*mask, dim=-1 )
+
+        # # print("exp_align ", exp_align.shape)
+        # # print("denom ", denom.shape)
+        # i_sim = exp_align1 / denom
+
+        # # print("align_sim ", align_sim.shape)
+        # # i_sm = F.softmax( (align_sim*unmask)/self.temperature, dim=1)
+        # # print("i_sm", i_sm.shape)
+
+        # # idiag = -torch.log(torch.sum((i_sm * mask), dim=-1) + 1e-8)
+        # idiag = -torch.log(i_sim)
+        # # print("idaig ", idiag.shape)
+        # loss_align = idiag.mean()
+        # loss_dict['align'] = loss_align.item()
+        
+        # # ------
 
         ## Within Video TCN Loss
         ## Number of negative video examples to use
@@ -243,7 +216,7 @@ class InfoNCE(nn.Module):
         loss_dict['tcn'] = tcn.item()
 
         loss = loss_align + tcn
-        return loss_dict, loss, queue
+        return loss_dict, loss
 
 def sim(tensor1, tensor2):
     cs = torch.nn.CosineSimilarity(1)
