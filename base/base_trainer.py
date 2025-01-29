@@ -254,22 +254,22 @@ class Multi_BaseTrainer:
         self.args = args
         # setup GPU device if available, move model into configured device
         self.device, device_ids = self._prepare_device(config['n_gpu'])
-        print("inherit")
+
         self.model = model.to(self.device)
         self.model.device = self.device
 
         if len(device_ids) > 1:
-            print("in if")
+
             #self.model = torch.nn.parallel.DistributedDataParallel(model)
             #self.model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.rank])
             # self.model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank])
-            if not isinstance(self.model, torch.nn.parallel.DataParallel):
+            if not isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
                 try:
-                    self.model = torch.nn.parallel.DataParallel(model, device_ids=[args.gpu])
+                    self.model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
                 except:
-                    self.model = torch.nn.parallel.DataParallel(model, device_ids=[args.local_rank])
+                    self.model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], find_unused_parameters=True)
                 #self.model = torch.nn.DataParallel(model, device_ids=device_ids)
-        print("out if")
+
         loss = loss.to(self.device)
         self.loss = loss
         # self.metrics = metrics
@@ -303,8 +303,6 @@ class Multi_BaseTrainer:
 
         if config.resume is not None:
             self._resume_checkpoint(config.resume)
-
-        print("all good")
 
     @abstractmethod
     def _train_epoch(self, epoch):

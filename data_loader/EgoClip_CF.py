@@ -110,10 +110,17 @@ class EgoClip_CF(TextVideoDataset):
         # example filename: 0e3ee603-7b9d-459d-9006-65285f3efd23_narration_pass_2_69
         # the above was generated from egoclip.csv as follows:
         #     single_vid = df.iloc[j, 0] + '_' + df.iloc[j, 2] + '_' + str(df.iloc[j, 3])
-        filename = str(sample['video_uid']) + '_' + str(sample['narration_source']) + '_' + str(sample['narration_ind'])
-        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/symlinks_v2" # make this a self.symlink_dir on init function
 
-        features_path = os.path.join(symlink_dir, filename)
+        # filename = str(sample['video_uid']) + '_' + str(sample['narration_source']) + '_' + str(sample['narration_ind'])
+
+        narration = str(sample['clip_text'])
+        filename =  "".join(x for x in narration if x.isalnum())
+        if filename[0].isnumeric():
+            filename = '_' + filename
+
+        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_v2" # make this a self.symlink_dir on init function
+
+        features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
         features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
 

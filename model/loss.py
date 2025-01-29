@@ -61,10 +61,12 @@ class EgoNCE(nn.Module):
 
 # https://github.com/facebookresearch/r3m/blob/main/r3m/trainer.py
 class InfoNCE(nn.Module):
-    def __init__(self, temperature=0.05, num_negatives=3):
+    def __init__(self, temperature=0.05, num_negatives=3, noun=True, verb=True):
         super().__init__()
         self.temperature = temperature
         self.num_neg = num_negatives
+        self.noun = noun
+        self.verb = verb
 
 
     def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
@@ -88,12 +90,22 @@ class InfoNCE(nn.Module):
         # EgoNCE
         sim_v = sim_matrix(v_embeds, v_embeds)
         sim_n = sim_matrix(n_embeds, n_embeds)
-        sim_align = sim_matrix(video_embeds, text_embeds)
+        sim_align = sim_matrix(video_embeds, narration)
         mask_diag = torch.eye(sim_align.shape[0]).cuda()
-        if self.noun and self.verb:
-            mask = mask_v * mask_n + mask_diag
+        # if self.noun and self.verb:
+        #     mask = mask_v * mask_n + mask_diag
 
         sim_align = F.softmax(sim_align/self.temperature, dim=1)
+
+        mask_diag = torch.eye(sim_align.shape[0]).cuda()
+
+        if self.noun and self.verb:
+            mask = sim_v * sim_n + mask_diag
+        elif self.noun:
+            mask = sim_n + mask_diag
+        else:
+            mask = sim_v + mask_diag
+
         mask_bool = mask > 0
         align_diag = torch.log(torch.sum(sim_align * mask_bool, dim=1) )
         loss_align = align_diag.sum() / len(align_diag)

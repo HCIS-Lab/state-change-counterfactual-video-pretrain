@@ -23,13 +23,13 @@ import model.metric as module_metric
 import model.counterfactual as module_arch
 import utils.visualizer as module_vis
 from parse_config import ConfigParser
-from trainer.trainer_egoclip_cf import Multi_Trainer_dist_CF
+from trainer.trainer_egoclip_cf import Multi_Trainer_CF
 from utils.util import replace_nested_dict_item
 from tensorboardX import SummaryWriter
 
 ex = Experiment('train')
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 
 @ex.main
 def run(config, args):
@@ -69,8 +69,7 @@ def run(config, args):
         print('Train dataset: ', [x.n_samples for x in data_loader], ' samples')
         # print('Val dataset: ', [x.n_samples for x in valid_data_loader], ' samples')
     # build model architecture, then print to console
-    print()
-    print("dataloaders ready")
+
     args.learning_rate1 = config['optimizer']['args']['lr']
     model = config.initialize('arch', module_arch)
 
@@ -79,14 +78,12 @@ def run(config, args):
 
     # get function handles of loss and metrics
     loss = config.initialize(name="loss", module=module_loss)
-    print()
-    print("loss ready")
+
     # metrics = [getattr(module_metric, met) for met in config['metrics']]
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = config.initialize('optimizer', transformers, trainable_params)
-    print()
-    print("optim ready")
+
     lr_scheduler = None
     if 'lr_scheduler' in config._config:
         if hasattr(transformers, config._config['lr_scheduler']['type']):
@@ -100,8 +97,8 @@ def run(config, args):
 
     if args.rank == 0:
         writer = SummaryWriter(log_dir=str(config.tf_dir))
-    print("here?")
-    trainer = Multi_Trainer_dist_CF(args, model, loss, optimizer,
+
+    trainer = Multi_Trainer_CF(args, model, loss, optimizer,
                       config=config,
                       data_loader=data_loader,
                     #   valid_data_loader=valid_data_loader,
@@ -109,9 +106,6 @@ def run(config, args):
                       visualizer=visualizer,
                       writer=writer,
                       max_samples_per_epoch=config['trainer']['max_samples_per_epoch'])
-    
-    print()
-    print("trainer ready")
 
     trainer.train()
 
