@@ -42,18 +42,6 @@ class EgoClip_CF(TextVideoDataset):
             #     self.state_metadata = json.load(json_file)
             # self.metadata = self.metadata[self.metadata['clip_text'].isin(self.state_metadata.keys())].reset_index(drop=True)
 
-            append_summary_baseline = False #TODO: Move to config
-            if append_summary_baseline:
-                summary_target_splits_fp = 'egosummary_full.csv'
-                self.summary_metadata = pd.read_csv(os.path.join(self.meta_dir, summary_target_splits_fp), sep='\t',error_bad_lines=False)
-                print('Assigning summary duration to one of the clips...')
-                for summary_idx in range(len(self.summary_metadata)):
-                    self.summary_metadata.loc[summary_idx, "clip_start"] = random.uniform(0.0, self.summary_metadata.iloc[summary_idx]['clip_start']-4.0)
-                    self.summary_metadata.loc[summary_idx, "clip_end"] = self.summary_metadata.iloc[summary_idx]['clip_start'] + random.uniform(1.5, 3.0)
-                    # self.summary_metadata.iloc[summary_idx]['clip_start'] = random.uniform(0.0, self.summary_metadata.iloc[summary_idx]['clip_start']-4.0)
-                    # self.summary_metadata.iloc[summary_idx]['clip_end'] = self.summary_metadata.iloc[summary_idx]['clip_start'] + random.uniform(1.5, 3.0) #typical clip duration
-                self.metadata = pd.concat([self.metadata, self.summary_metadata], ignore_index=True)
-
             if self.neg_param:
                 self.metadata['chunk_id'] = self.metadata['narration_time'] // self.neg_param
                 self.metadata['chunk_id'] = self.metadata['chunk_id'].astype(str)
@@ -149,20 +137,17 @@ class EgoClip_CF(TextVideoDataset):
             final_neg = self._get_video_frames(video_fp_neg, video_sec_neg, bound_sec_neg)
 
         meta_arr = {'raw_captions': caption, 'paths': video_fp, 'dataset': self.dataset_name}
-        # if self.neg_param:
-        #     return {'video': final, 'text': caption,
-        #             'video_neg': final_neg, 'text_neg': caption_neg,
-        #             'meta': meta_arr,
-        #             'noun_vec': noun_vec, 'verb_vec': verb_vec,
-        #             'noun_vec_neg': noun_vec_neg, 'verb_vec_neg': verb_vec_neg}
-        # else:
-        #     return {'video': final, 'text': caption,
-        #         'meta': meta_arr,
-        #         'noun_vec': noun_vec, 'verb_vec': verb_vec}
-
-        return {'video': final, 'text': caption,
-                'video_neg': final_neg, 'text_neg': caption_neg,
+        if self.neg_param:
+            return {'video': final, 'text': caption,
+                    'video_neg': final_neg, 'text_neg': caption_neg,
+                    'meta': meta_arr,
+                    'noun_vec': noun_vec, 'verb_vec': verb_vec,
+                    'noun_vec_neg': noun_vec_neg, 'verb_vec_neg': verb_vec_neg,
+                    'narration': nar, 'before': before, 'after': after, 'CF1': cf1, 'CF2': cf2, 'CF3': cf3}
+        else:
+            return {'video': final, 'text': caption,
                 'meta': meta_arr,
+                'noun_vec': noun_vec, 'verb_vec': verb_vec,
                 'narration': nar, 'before': before, 'after': after, 'CF1': cf1, 'CF2': cf2, 'CF3': cf3}
 
     def __len__(self):
