@@ -1,8 +1,8 @@
 {
-    "name": "EgoClip_4f",
-    "n_gpu": 8,
+    "name": "EgoClip_CF",
+    "n_gpu": 4,
     "arch": {
-        "type": "FrozenInTime",
+        "type": "CF",
         "args": {
             "video_params": {
                 "model": "SpaceTimeTransformer",
@@ -10,10 +10,15 @@
                 "num_frames": 16,
                 "pretrained": true,
                 "time_init": "zeros"
-            }
+            },
+            "text_params": {
+                "model": "distilbert-base-uncased",
+                "pretrained": true,
+                "input": "text"
             },
             "projection": "minimal",
             "load_checkpoint" : ""
+        }
     },
     "data_loader":
             [
@@ -21,12 +26,12 @@
                     "type": "MultiDistTextVideoDataLoader",
                     "args":{
                         "dataset_name": "EgoClip_CF",
-                        "data_dir": "/nfs/wattrel/data/md0/datasets/state_aware/ego4d_chunked/",
-                        "meta_dir": "/nfs/wattrel/data/md0/datasets/state_aware/",
+                        "data_dir": "/N/project/ego4d_vlm/ego4d_chunked/",
+                        "meta_dir": "/N/project/ego4d_vlm/",
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 32,
-                        "batch_size": 16,
+                        "batch_size": 64,
                         "split": "train",
                         "subsample": "mcq",
                         "text_params": {
@@ -37,18 +42,18 @@
                             "num_frames": 4,
                             "loading": "lax"
                         },
-                        "neg_param": false
+                        "neg_param": true
                     }
                 }
             ],
     "optimizer": {
         "type": "AdamW",
         "args":{
-            "lr": 3e-5
+            "lr": 5e-4
         }
     },
     "loss": {
-        "type": "EgoNCE",
+        "type": "InfoNCE",
         "args": {
         }
     },
@@ -58,7 +63,7 @@
     "trainer": {
         "epochs": 10,
         "max_samples_per_epoch": 500000,
-        "save_dir": "results/EgoClip_cf",
+        "save_dir": "results/EgoClip_4f",
         "save_period": 1,
         "verbosity": 2,
         "monitor": "min val_loss_0",
