@@ -114,11 +114,11 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 num_data +=1
                 # then assume we must tokenize the input, e.g. its a string
                 # if 'video_neg' in data.keys():  # w/ negative sampling
-                #     # data['text'] = data['text'] + data['text_neg']
-                #     # data['text_neg'] = data['text_neg'].to(self.device)
-                #     # data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
-                #     # data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
-                #     # data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
+                #     data['text'] = data['text'] + data['text_neg']
+                #     data['text_neg'] = data['text_neg'].to(self.device)
+                #     data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
+                #     data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
+                #     data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
                 data['narration'] = data['narration'].to(self.device)
                 data['before'] = data['before'].to(self.device)
@@ -128,14 +128,14 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 data['CF3'] = data['CF3'].to(self.device)
                 data['video'] = data['video'].to(self.device)
 
-                data['narration'].requires_grad = False
-                data['before'].requires_grad = False
-                data['after'].requires_grad = False
-                data['CF1'].requires_grad = False
-                data['CF2'].requires_grad = False
-                data['CF3'].requires_grad = False
-                # n_embeds = data['noun_vec'].to(self.device)
-                # v_embeds = data['verb_vec'].to(self.device)
+                # data['narration'].requires_grad = False
+                # data['before'].requires_grad = False
+                # data['after'].requires_grad = False
+                # data['CF1'].requires_grad = False
+                # data['CF2'].requires_grad = False
+                # data['CF3'].requires_grad = False
+                n_embeds = data['noun_vec'].to(self.device)
+                v_embeds = data['verb_vec'].to(self.device)
 
                 with torch.no_grad():  # Avoid unnecessary gradient tracking
                     narration = self.allgather(data['narration'], self.n_gpu, self.args)
