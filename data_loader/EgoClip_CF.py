@@ -26,6 +26,8 @@ class EgoClip_CF(TextVideoDataset):
     def _load_metadata(self):
         split_files = {
             'train': 'egoclip_update.csv',
+            'val': 'egomcq.json',
+            'test': 'egomcq.json'
 
         }
         target_split_fp = split_files[self.split]
@@ -35,9 +37,8 @@ class EgoClip_CF(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
             self.frame_sample = 'rand'
-
             # with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
             #     self.state_metadata = json.load(json_file)
             # self.metadata = self.metadata[self.metadata['clip_text'].isin(self.state_metadata.keys())].reset_index(drop=True)
@@ -46,7 +47,10 @@ class EgoClip_CF(TextVideoDataset):
                 self.metadata['chunk_id'] = self.metadata['narration_time'] // self.neg_param
                 self.metadata['chunk_id'] = self.metadata['chunk_id'].astype(str)
                 self.metadata['segment_id'] = self.metadata['video_uid'] + '_' + self.metadata['chunk_id']
-
+        elif self.split in ['val', 'test']:
+            self.frame_sample = 'uniform'
+            with open(os.path.join(self.meta_dir, target_split_fp), 'r') as load_f:
+                self.metadata = json.load(load_f)
 
     def _get_video_path(self, sample):
         video_uid = sample['video_uid']
@@ -118,7 +122,7 @@ class EgoClip_CF(TextVideoDataset):
         if filename[0].isnumeric():
             filename = '_' + filename
 
-        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_v2" # make this a self.symlink_dir on init function
+        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_v2" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
@@ -157,6 +161,33 @@ class EgoClip_CF(TextVideoDataset):
                 'noun_vec': noun_vec, 'verb_vec': verb_vec,
                 'narration': nar, 'before': before, 'after': after, 'CF1': cf1, 'CF2': cf2, 'CF3': cf3}
 
+    def _get_val_item(self, item):
+        item = item % len(self.metadata)
+        itemMCQ = self.metadata[str(item)]
+
+        answerIndex = itemMCQ['answer']
+        sampleQuery = itemMCQ['query']
+        textQuery, _, _ = self._get_caption(sampleQuery)
+
+        sampleOptions = itemMCQ['choices']
+        num_options = len(sampleOptions)
+        textOptions = []
+        videoOptions = torch.zeros([num_options, self.video_params['num_frames'], 3, self.video_params['input_res'],
+                             self.video_params['input_res']])
+
+        for id, option in enumerate(sampleOptions):
+            sampleOptioni = sampleOptions[option]
+            video_fp, video_sec, bound_sec = self._get_video_path(sampleOptioni)
+            caption, _, _ = self._get_caption(sampleOptioni)
+            textOptions.append(caption)
+
+            imgs = self._get_video_frames(video_fp, video_sec, bound_sec)
+            videoOptions[id] = imgs
+
+        type =  itemMCQ['types']    # 1 for inter; 2 for intra
+        data = {'video': videoOptions, 'text': textQuery, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
+        return data
+        
     def __len__(self):
         return len(self.metadata)
 
