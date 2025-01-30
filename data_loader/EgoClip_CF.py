@@ -187,13 +187,15 @@ class EgoClip_CF(TextVideoDataset):
         type =  itemMCQ['types']    # 1 for inter; 2 for intra
         data = {'video': videoOptions, 'text': textQuery, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
         return data
-        
+
     def __len__(self):
         return len(self.metadata)
 
     def __getitem__(self, item):
         if self.split == 'train':
             return self._get_train_item(item)
+        elif self.split in ['val', 'test']:
+            return self._get_val_item(item)
 
 if __name__ == "__main__":
     kwargs = dict(
