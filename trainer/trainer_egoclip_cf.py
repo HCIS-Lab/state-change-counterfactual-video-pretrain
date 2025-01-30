@@ -98,8 +98,6 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
         print(epoch)
         self.model.train()
         total_loss = [0] * len(self.data_loader)
-        loss_avg = 0
-        num_data = 0
         print('learning_rate: ', self.args.learning_rate1)
         # total_metrics = np.zeros(len(self.metrics))
         for loader in self.data_loader:
@@ -108,7 +106,6 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
             if (batch_idx + 1) * self.total_batch_sum > self.max_samples_per_epoch:
                 break
             for dl_idx, data in enumerate(data_li):
-                num_data +=1
                 # then assume we must tokenize the input, e.g. its a string
                 # if 'video_neg' in data.keys():  # w/ negative sampling
                 #     # data['text'] = data['text'] + data['text_neg']
@@ -166,7 +163,7 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                     self.writer.add_scalar(f'Video-text Align_Loss_training/loss_{dl_idx}', loss_dict['align'], final_total)
                     self.writer.add_scalar(f'TCN Loss_training/loss_{dl_idx}', loss_dict['tcn'], final_total)
                 total_loss[dl_idx] += loss.detach().item()
-                loss_avg += loss.detach().item()
+
                 # if batch_idx % self.log_step == 0 and self.args.local_rank == 0:
                 if batch_idx % self.log_step == 0 and self.args.rank == 0:
                     self.logger.info('[{}] Train Epoch: {} dl{} {} Loss: {:.6f}'.format(
@@ -194,7 +191,6 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
         log = {
             f'loss_{dl_idx}': total_loss[dl_idx] / self.len_epoch for dl_idx in range(len(self.data_loader))
         }
-        loss_avg = loss_avg/num_data
 
         if self.writer is not None and self.args.rank == 0:
             for dl_idx in range(len(self.data_loader)):
@@ -208,7 +204,7 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
 
         self._adjust_learning_rate(self.optimizer, epoch, self.args)
 
-        return log, loss_avg
+        return log
 
     def _valid_epoch(self, epoch):
         """

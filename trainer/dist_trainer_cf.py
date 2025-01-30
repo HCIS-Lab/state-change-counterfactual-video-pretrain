@@ -45,7 +45,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
     """
 
     def __init__(self, args, model, loss, optimizer, config, data_loader,
-                 lr_scheduler=None, len_epoch=None, writer=None,
+                 valid_data_loader=None, lr_scheduler=None, len_epoch=None, writer=None,
                  visualizer=None, tokenizer=None, max_samples_per_epoch=50000, start_epoch=1):
         super().__init__(args, model, loss, optimizer, config, writer, start_epoch=start_epoch)
         self.config = config
@@ -68,6 +68,16 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         self.max_samples_per_epoch = max_samples_per_epoch
         self.n_gpu = self.args.world_size
         self.allgather = AllGather_multi.apply
+        self.valid_data_loader = valid_data_loader
+        self.do_validation = self.valid_data_loader is not None
+
+    def _eval_metrics(self, output):
+        acc_metrics = np.zeros(len(self.metrics))
+        for i, metric in enumerate(self.metrics):
+            acc_metrics[i] += metric(output)
+            # if self.writer is not None:
+            #     self.writer.log_scalar('{}'.format(metric.__name__), acc_metrics[i])
+        return acc_metrics
 
     def _adjust_learning_rate(self, optimizer, epoch, args):
         lr = args.learning_rate1
@@ -97,24 +107,15 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         print(epoch)
         self.model.train()
         total_loss = [0] * len(self.data_loader)
-        loss_avg = 0
-        num_data = 0
+
         print('learning_rate: ', self.args.learning_rate1)
-        # total_metrics = np.zeros(len(self.metrics))
+        total_metrics = np.zeros(len(self.metrics))
         for loader in self.data_loader:
             loader.train_sampler.set_epoch(epoch)
         for batch_idx, data_li in enumerate(zip(*self.data_loader)):
             if (batch_idx + 1) * self.total_batch_sum > self.max_samples_per_epoch:
                 break
             for dl_idx, data in enumerate(data_li):
-                num_data +=1
-                # then assume we must tokenize the input, e.g. its a string
-                # if 'video_neg' in data.keys():  # w/ negative sampling
-                #     data['text'] = data['text'] + data['text_neg']
-                #     data['text_neg'] = data['text_neg'].to(self.device)
-                #     data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
-                #     data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
-                #     data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
                 data['narration'] = data['narration'].to(self.device)
                 data['before'] = data['before'].to(self.device)
@@ -124,12 +125,12 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 data['CF3'] = data['CF3'].to(self.device)
                 data['video'] = data['video'].to(self.device)
 
-                # data['narration'].requires_grad = False
-                # data['before'].requires_grad = False
-                # data['after'].requires_grad = False
-                # data['CF1'].requires_grad = False
-                # data['CF2'].requires_grad = False
-                # data['CF3'].requires_grad = False
+                data['narration'].requires_grad = False
+                data['before'].requires_grad = False
+                data['after'].requires_grad = False
+                data['CF1'].requires_grad = False
+                data['CF2'].requires_grad = False
+                data['CF3'].requires_grad = False
                 n_embeds = data['noun_vec'].to(self.device)
                 v_embeds = data['verb_vec'].to(self.device)
 
@@ -192,21 +193,20 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         log = {
             f'loss_{dl_idx}': total_loss[dl_idx] / self.len_epoch for dl_idx in range(len(self.data_loader))
         }
-        loss_avg = loss_avg/num_data
 
         if self.writer is not None and self.args.rank == 0:
             for dl_idx in range(len(self.data_loader)):
                 tl = total_loss[dl_idx] / self.len_epoch
                 self.writer.add_scalar(f'Loss_training/loss_total_{dl_idx}', tl, epoch-1)
 
-        # if self.do_validation:
-        #     val_log = self._valid_epoch(epoch)
-        #     if self.args.rank == 0:
-        #         log.update(val_log)
+        if self.do_validation:
+            val_log = self._valid_epoch(epoch)
+            if self.args.rank == 0:
+                log.update(val_log)
 
         self._adjust_learning_rate(self.optimizer, epoch, self.args)
 
-        return log, loss_avg
+        return log
 
     def _valid_epoch(self, epoch):
         """

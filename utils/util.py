@@ -36,7 +36,7 @@ def load_checkpoint_after_preemption(config):
     except:
         print('[PREEMPTION STATUS] This is a local run. Not checking for existing preempted runs...')
         return None, None
-    experiments_dir = '/path/to/experiments/'
+    experiments_dir = '/N/project/ego4d_vlm/state-aware-video-pretrain/'
     if not os.path.exists(os.path.join(experiments_dir, JOB_NAME)):
         print('[PREEMPTION STATUS] No previous runs found for this JOB_NAME. Starting fresh...')
         return None, None
