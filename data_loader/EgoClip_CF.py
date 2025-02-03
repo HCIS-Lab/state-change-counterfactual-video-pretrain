@@ -130,7 +130,7 @@ class EgoClip_CF(TextVideoDataset):
 
         # return narration, before, after, cf1, cf2, cf3
         return features[0, 0, :], features[1, 0, :], features[2, 0, :], features[3, 0, :], features[4, 0, :], features[5, 0, :]
-
+    
     def _get_train_item(self, item):
         item = item % len(self.metadata)
         sample = self.metadata.iloc[item]
@@ -160,14 +160,29 @@ class EgoClip_CF(TextVideoDataset):
                 'meta': meta_arr,
                 'noun_vec': noun_vec, 'verb_vec': verb_vec,
                 'narration': nar, 'before': before, 'after': after, 'CF1': cf1, 'CF2': cf2, 'CF3': cf3}
+    
+    def _get_val_features(self, query):
+        filename =  "".join(x for x in query if x.isalnum())
+        if filename[0].isnumeric():
+            filename = '_' + filename
 
+        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_egoMCQ" # make this a self.symlink_dir on init function
+
+        features_path = os.path.join(symlink_dir, filename + '.npy')
+        features = np.load(features_path, allow_pickle=True)
+        features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
+
+        return features[0, 0, :]
+    
     def _get_val_item(self, item):
         item = item % len(self.metadata)
         itemMCQ = self.metadata[str(item)]
 
         answerIndex = itemMCQ['answer']
         sampleQuery = itemMCQ['query']
+
         textQuery, _, _ = self._get_caption(sampleQuery)
+        query_feats = self._get_val_features(textQuery)
 
         sampleOptions = itemMCQ['choices']
         num_options = len(sampleOptions)
@@ -185,7 +200,7 @@ class EgoClip_CF(TextVideoDataset):
             videoOptions[id] = imgs
 
         type =  itemMCQ['types']    # 1 for inter; 2 for intra
-        data = {'video': videoOptions, 'text': textQuery, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
+        data = {'video': videoOptions, 'text': query_feats, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
         return data
 
     def __len__(self):
