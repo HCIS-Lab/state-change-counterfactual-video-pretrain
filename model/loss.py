@@ -84,6 +84,7 @@ class InfoNCE(nn.Module):
         assert frame_embeds.requires_grad
         # video-text only
         # EgoNCE
+        mask_diag = torch.eye(x.shape[0]).cuda()
         mask_v = sim_matrix(v_embeds, v_embeds)
         mask_n = sim_matrix(n_embeds, n_embeds)
         if self.noun and self.verb:
@@ -94,7 +95,7 @@ class InfoNCE(nn.Module):
             mask = mask_v + mask_diag
 
         x = sim_matrix(video_embeds, narration)
-        mask_diag = torch.eye(x.shape[0]).cuda()
+        
 
         # "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
         align_sm = F.softmax(x/self.temperature, dim=1)
@@ -104,7 +105,7 @@ class InfoNCE(nn.Module):
         loss_align = - loss_align_i 
         loss_dict['align'] = loss_align.item()
         
-        
+
         ## Within Video TCN Loss
         ## Number of negative video examples to use
         bs, num_frame, _ = frame_embeds.shape
