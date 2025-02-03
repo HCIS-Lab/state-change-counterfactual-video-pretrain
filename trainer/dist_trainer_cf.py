@@ -44,10 +44,10 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         Inherited from BaseTrainer.
     """
 
-    def __init__(self, args, model, loss, optimizer, config, data_loader,
+    def __init__(self, args, model, loss, metrics, optimizer, config, data_loader,
                  valid_data_loader=None, lr_scheduler=None, len_epoch=None, writer=None,
                  visualizer=None, tokenizer=None, max_samples_per_epoch=50000, start_epoch=1):
-        super().__init__(args, model, loss, optimizer, config, writer, start_epoch=start_epoch)
+        super().__init__(args, model, loss, metrics, optimizer, config, writer, start_epoch=start_epoch)
         self.config = config
         self.args = args
         self.data_loader = data_loader
@@ -75,8 +75,8 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         acc_metrics = np.zeros(len(self.metrics))
         for i, metric in enumerate(self.metrics):
             acc_metrics[i] += metric(output)
-            # if self.writer is not None:
-            #     self.writer.log_scalar('{}'.format(metric.__name__), acc_metrics[i])
+            if self.writer is not None:
+                self.writer.log_scalar('{}'.format(metric.__name__), acc_metrics[i])
         return acc_metrics
 
     def _adjust_learning_rate(self, optimizer, epoch, args):
@@ -107,7 +107,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
         print(epoch)
         self.model.train()
         total_loss = [0] * len(self.data_loader)
-
         print('learning_rate: ', self.args.learning_rate1)
         total_metrics = np.zeros(len(self.metrics))
         for loader in self.data_loader:
@@ -148,7 +147,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
 
                 self.optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
-                    video_embeds, frame_embeds = self.model(data)
+                    video_embeds, frame_embeds = self.model(data['video'])
                     video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
                     frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
                     loss_dict, loss = self.loss(text_embeds, video_embeds, \
@@ -165,7 +164,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     self.writer.add_scalar(f'Video-text Align_Loss_training/loss_{dl_idx}', loss_dict['align'], final_total)
                     self.writer.add_scalar(f'TCN Loss_training/loss_{dl_idx}', loss_dict['tcn'], final_total)
                 total_loss[dl_idx] += loss.detach().item()
-                loss_avg += loss.detach().item()
                 # if batch_idx % self.log_step == 0 and self.args.local_rank == 0:
                 if batch_idx % self.log_step == 0 and self.args.rank == 0:
                     self.logger.info('[{}] Train Epoch: {} dl{} {} Loss: {:.6f}'.format(
@@ -231,25 +229,16 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
             for dl_idx, dl in enumerate(self.valid_data_loader):
                 for batch_idx, data in enumerate(tqdm(dl)):
                     data['video'] = data['video'][0]  # remove batch
-                    data['text'] = data['text']
-
-                    if self.tokenizer is not None:
-                        data['text'] = self.tokenizer(data['text'], return_tensors='pt', padding=True, truncation=True)
-                    data['text'] = {key: val.to(self.device) for key, val in data['text'].items()}
+                    data['text_feats'] = data['text_feats'][0]
                     data['video'] = data['video'].to(self.device)
-                    text_embed, vid_embed = self.model(data, return_embeds=True)
+                    text_embed = data['text_feats'].to(self.device)
+
+                    vid_embed, _ = self.model(data['video'], return_embeds=True)
 
                     data_gt = data['correct'][0].to(self.device).unsqueeze(0)
                     data_pred = sim_matrix(text_embed, vid_embed)
                     data_type = data['type'][0].to(self.device).unsqueeze(0)
 
-                    # if isinstance(self.model, nn.DataParallel) and data["video"].shape[0] < len(self.model.device_ids):
-                    # Note that if some batch has size smaller than the GPU size, `DataParallel` will fail.
-                    # It can happen with the last batch of the dataset, depending on its size.
-                    # This avoids using `DataParallel` in this case, and supposes the entire batch fits in one GPU.
-                    #    text_embed, vid_embed = self.model.module(data, return_embeds=True)
-                    # else:
-                    #    text_embed, vid_embed = self.model(data, return_embeds=True)
                     data_gt_all = [torch.zeros_like(data_gt) for _ in range(self.n_gpu)]
                     torch.distributed.all_gather(data_gt_all, data_gt)
                     data_gt_all = torch.cat(data_gt_all, dim=0)
@@ -289,8 +278,6 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 if self.writer is not None and self.args.rank == 0:
                     to_write = format_nested_metrics_for_writer(res, mode=metric_name,
                                                                 name=self.valid_data_loader[dl_idx].dataset_name)
-                    # for key, val in to_write.items():
-                    #     self.writer.log_scalar(key, val)
                     for key, val in to_write.items():
                         key = key.replace('[', '_').replace(']', '_')
                         self.writer.add_scalar(f'Val_metrics_{dl_idx}/{key}', val, epoch - 1)

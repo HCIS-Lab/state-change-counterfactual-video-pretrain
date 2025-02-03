@@ -73,22 +73,9 @@ class CF(BaseModel):
         # for backwards compatibility (old models)
         self.video_model.fc = nn.Identity()
 
-        #HT100 classification head
-        # self.head_ht100m = nn.Sequential(
-        #     nn.Linear(projection_dim, 786),
-        #     nn.ReLU(inplace=True),
-        #     nn.Linear(786, 1059)
-        # )
         self.head_ht100m_linear_probe = nn.Sequential(
             nn.Linear(projection_dim, 100)
         )
-
-        #EPIC-KITCHENS anticipation classification head
-        # self.head_epic_kitchens = nn.Sequential(
-        #     nn.Linear(projection_dim, 786),
-        #     nn.ReLU(inplace=True),
-        #     nn.Linear(786, 3806)
-        # )
 
         # Project to a common embedding
         if projection == 'minimal':
@@ -132,15 +119,15 @@ class CF(BaseModel):
     def set_device(self, device):
         self.device = device
 
-    def forward(self, data, video_only=False, return_embeds=True, do_aggregation=False, batch_size=None):
+    def forward(self, video, video_only=False, return_embeds=True, do_aggregation=False, batch_size=None):
         if do_aggregation and batch_size is None:
             raise NotImplementedError("If do_aggregation is activated, batch_size must be provided.")
         if video_only:
-            video_data = data['video']
+            video_data = video
             video_embeddings, frame_embeddings = self.compute_video(video_data)
             return video_embeddings, frame_embeddings
 
-        video_data = data['video']
+        video_data = video
 
         video_embeddings, frame_embeddings = self.compute_video(video_data)
 
@@ -177,8 +164,6 @@ class CF(BaseModel):
 
     def compute_video(self, video_data):
         video_embeddings, frame_embeddings = self.video_model(video_data)
-        video_embeddings = F.normalize(self.vid_proj(video_embeddings), dim=-1)
-        frame_embeddings = F.normalize(self.frame_proj(frame_embeddings), dim=-1)
         return video_embeddings, frame_embeddings
 
     def average(self, embeddings, batch_size):
