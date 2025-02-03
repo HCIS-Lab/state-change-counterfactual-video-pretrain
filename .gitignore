@@ -1,1 +1,4 @@
 data_loader/EgoClip_EgoMCQ_dataset.py
+trainer_clip_a100.sh
+trainer_clip_h100.sh
+trainer_clip_v100.sh
