@@ -68,86 +68,43 @@ class InfoNCE(nn.Module):
         self.noun = noun
         self.verb = verb
 
-
     def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
         loss_dict = {}
         epsilon = 1e-8
         narration, before, after, CF1, CF2, CF3 = text_embeds
-        # narration.requires_grad = False
-        # before.requires_grad = False
-        # after.requires_grad = False
-        # CF1.requires_grad = False
-        # CF2.requires_grad = False
-        # CF3.requires_grad = False
+        narration.requires_grad = False
+        before.requires_grad = False
+        after.requires_grad = False
+        CF1.requires_grad = False
+        CF2.requires_grad = False
+        CF3.requires_grad = False
 
         # video_text_alignment
-        # mask_diag = torch.eye(video_embeds.shape[0]).cuda()
-
-        # "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
         assert video_embeds.requires_grad
         assert frame_embeds.requires_grad
         # video-text only
         # EgoNCE
-        sim_v = sim_matrix(v_embeds, v_embeds)
-        sim_n = sim_matrix(n_embeds, n_embeds)
-        sim_align = sim_matrix(video_embeds, narration)
-        mask_diag = torch.eye(sim_align.shape[0]).cuda()
-        # if self.noun and self.verb:
-        #     mask = mask_v * mask_n + mask_diag
-
-        sim_align_i = F.softmax(sim_align/self.temperature, dim=1)
-        # sim_align_j = F.softmax(sim_align.t()/self.temperature, dim=1)
-
-        mask_diag = torch.eye(sim_align.shape[0]).cuda()
-
+        mask_v = sim_matrix(v_embeds, v_embeds)
+        mask_n = sim_matrix(n_embeds, n_embeds)
         if self.noun and self.verb:
-            mask = sim_v * sim_n + mask_diag
+            mask = mask_v * mask_n + mask_diag
         elif self.noun:
-            mask = sim_n + mask_diag
+            mask = mask_n + mask_diag
         else:
-            mask = sim_v + mask_diag
+            mask = mask_v + mask_diag
 
+        x = sim_matrix(video_embeds, narration)
+        mask_diag = torch.eye(x.shape[0]).cuda()
+
+        # "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
+        align_sm = F.softmax(x/self.temperature, dim=1)
         mask_bool = mask > 0
-
-        align_diag_i = torch.log(torch.sum(sim_align_i * mask_bool, dim=1) )
-        # align_diag_j = torch.log(torch.sum(sim_align_j * mask_bool, dim=1) )
-
-        loss_align_i = align_diag_i.sum() / len(align_diag_i)
-        # loss_align_j = align_diag_j.sum() / len(align_diag_j)
-        loss_align = - loss_align_i #- loss_align_j
+        idiag = torch.log(torch.sum(align_sm * mask_bool, dim=1) )
+        loss_align = idiag.sum() / len(idiag)
+        loss_align = - loss_align_i 
         loss_dict['align'] = loss_align.item()
         
-        # # ------
-
-        # # print("video_embeds ", video_embeds.shape)
-        # # print("narration ", narration.shape)
-        # align_sim = sim_matrix(video_embeds, narration)
-
-        # mask = torch.eye(align_sim.shape[-1]).detach().cuda()
-        # unmask = (mask != 1)*1
-
-        # # denom0 = align_sim * unmask
-        # exp_align = torch.exp(align_sim/self.temperature)
-        # denom0 = exp_align*unmask
-        # denom = torch.sum(denom0, dim=-1)
-        # exp_align1 = torch.sum( exp_align*mask, dim=-1 )
-
-        # # print("exp_align ", exp_align.shape)
-        # # print("denom ", denom.shape)
-        # i_sim = exp_align1 / denom
-
-        # # print("align_sim ", align_sim.shape)
-        # # i_sm = F.softmax( (align_sim*unmask)/self.temperature, dim=1)
-        # # print("i_sm", i_sm.shape)
-
-        # # idiag = -torch.log(torch.sum((i_sm * mask), dim=-1) + 1e-8)
-        # idiag = -torch.log(i_sim)
-        # # print("idaig ", idiag.shape)
-        # loss_align = idiag.mean()
-        # loss_dict['align'] = loss_align.item()
         
-        # # ------
-
         ## Within Video TCN Loss
         ## Number of negative video examples to use
         bs, num_frame, _ = frame_embeds.shape
