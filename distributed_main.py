@@ -205,18 +205,11 @@ def main():
         args.world_size = ngpus_per_node * args.world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
-        if args.experiment == "epic_mir":
-            mp.spawn(epic_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
-        elif args.experiment == "egoclip":
-            mp.spawn(egoclip_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
-        elif args.experiment == "egoclip_cf":
+        if args.experiment == "egoclip_cf":
             mp.spawn(egoclip_main_worker_cf, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
         elif args.experiment == "egoaggregation":
             mp.spawn(egoaggregation_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
-        elif args.experiment == "charades":
-            mp.spawn(charades_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
-        elif args.experiment == "howto100m":
-            mp.spawn(howto100m_main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args, config))
+
     else:
         raise NotImplementedError
         # Simply call main_worker function
