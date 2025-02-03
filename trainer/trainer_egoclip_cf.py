@@ -77,7 +77,7 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
             # if self.writer is not None:
             #     self.writer.log_scalar('{}'.format(metric.__name__), acc_metrics[i])
         return acc_metrics
-        
+
     def _adjust_learning_rate(self, optimizer, epoch, args):
         lr = args.learning_rate1
         for milestone in args.schedule:
@@ -159,7 +159,6 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                                                 v_embeds, n_embeds, 
                                                 frame_embeds)
 
-                    # loss_dict, loss = self.loss(text_embeds, video_embeds, frame_embeds)
                 loss.backward()
                 self.optimizer.step()
 
