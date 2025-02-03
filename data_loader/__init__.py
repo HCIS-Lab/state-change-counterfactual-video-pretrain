@@ -6,9 +6,5 @@
 
 
 from .data_loader import *
-from .EgoClip_EgoMCQ_dataset import *
-from .EgoAggregation_dataset import *
-from .EpicKitchens_MIR_dataset import *
-from .CharadesEgo_dataset import *
-from .HowTo100M_VC_dataset import *
+from .EgoClip_CF import *
 from .transforms import *
