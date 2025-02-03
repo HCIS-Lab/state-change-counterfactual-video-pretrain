@@ -84,6 +84,7 @@ class InfoNCE(nn.Module):
         assert frame_embeds.requires_grad
         # video-text only
         # EgoNCE
+        x = sim_matrix(video_embeds, narration)
         mask_diag = torch.eye(x.shape[0]).cuda()
         mask_v = sim_matrix(v_embeds, v_embeds)
         mask_n = sim_matrix(n_embeds, n_embeds)
@@ -93,9 +94,6 @@ class InfoNCE(nn.Module):
             mask = mask_n + mask_diag
         else:
             mask = mask_v + mask_diag
-
-        x = sim_matrix(video_embeds, narration)
-        
 
         # "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
         align_sm = F.softmax(x/self.temperature, dim=1)
