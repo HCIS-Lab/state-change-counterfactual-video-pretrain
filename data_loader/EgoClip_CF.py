@@ -200,7 +200,7 @@ class EgoClip_CF(TextVideoDataset):
             videoOptions[id] = imgs
 
         type =  itemMCQ['types']    # 1 for inter; 2 for intra
-        data = {'video': videoOptions, 'text': query_feats, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
+        data = {'video': videoOptions, 'text': textQuery, 'text_feats': query_feats, 'text_ops':textOptions, 'correct': answerIndex, 'type': type}
         return data
 
     def __len__(self):
