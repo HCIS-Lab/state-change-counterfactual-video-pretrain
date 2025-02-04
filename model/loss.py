@@ -100,7 +100,7 @@ class InfoNCE(nn.Module):
         mask_bool = mask > 0
         idiag = torch.log(torch.sum(align_sm * mask_bool, dim=1) )
         loss_align = idiag.sum() / len(idiag)
-        loss_align = - loss_align_i 
+        loss_align = - loss_align 
         loss_dict['align'] = loss_align.item()
         
 
