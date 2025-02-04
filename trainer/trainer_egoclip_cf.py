@@ -243,7 +243,7 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                     vid_embed, _ = self.model(data['video'], return_embeds=True)
 
                     data_gt = data['correct'][0].to(self.device).unsqueeze(0)
-                    data_pred = sim_matrix(text_embed, vid_embed)
+                    data_pred = sim_matrix(vid_embed, text_embed)
                     data_type = data['type'][0].to(self.device).unsqueeze(0)
 
                     data_gt_all = [torch.zeros_like(data_gt) for _ in range(self.n_gpu)]
