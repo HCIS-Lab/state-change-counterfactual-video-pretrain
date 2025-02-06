@@ -122,7 +122,7 @@ class EgoClip_CF(TextVideoDataset):
         if filename[0].isnumeric():
             filename = '_' + filename
 
-        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_v2" # make this a self.symlink_dir on init function
+        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
@@ -166,7 +166,7 @@ class EgoClip_CF(TextVideoDataset):
         if filename[0].isnumeric():
             filename = '_' + filename
 
-        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_egoMCQ" # make this a self.symlink_dir on init function
+        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_egoMCQ_FLAVA" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
