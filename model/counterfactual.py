@@ -167,7 +167,7 @@ class CF(BaseModel):
 
     def compute_video(self, video_data):
         video_embeddings, frame_embeddings = self.video_model(video_data)
-        return video_embeddings, frame_embeddings
+        return self.vid_proj(video_embeddings), self.frame_proj(frame_embeddings)
 
     def average(self, embeddings, batch_size):
         # Expected embeddings input shape: (batch_size x samples_per_video) x embed_dim and output shape: batch_size x embed_dim
