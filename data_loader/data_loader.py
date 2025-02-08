@@ -69,35 +69,11 @@ def dataset_loader(dataset_name,
     # TODO: change to...
     #  dataset = globals()[dataset_name]
     #  ...is this safe / or just lazy?
-    if dataset_name == "WebVid":
-        dataset = WebVid(**kwargs)
-    elif dataset_name == "ConceptualCaptions3M":
-        dataset = ConceptualCaptions3M(**kwargs)
-    elif dataset_name == "EgoClip":
-        dataset = EgoClip_EgoMCQ(**kwargs)
-    elif dataset_name == "EgoClip_CF":
-        dataset = EgoClip_CF(**kwargs) # here
-    elif dataset_name == "EgoAggregation":
-        dataset = EgoAggregation(**kwargs)
 
-    elif dataset_name == "EpicKitchens_MIR":
-        dataset = MultiInstanceRetrieval(**kwargs)
-    elif dataset_name == "HowTo100M_VC":
-        dataset = HowTo100MVideoClassification(**kwargs)
-    elif dataset_name == "ActionAnticipation":
-        dataset = ActionAnticipation(**anticipation_param)
-    elif dataset_name == "EPIC_ActionAnticipation":
-        dataset = EPIC_ActionAnticipation(**kwargs)
-    elif dataset_name == "CharadesEgo":
-        dataset = CharadesEgo(**kwargs)
-    elif dataset_name == "Ego4D_OSCC":
-        dataset = ObjectStateChangeClassification(**kwargs)
-    elif dataset_name == "Ego4D_PNR":
-        dataset = PNRTemporalLocalization(**kwargs)
-    elif dataset_name == "Ego4D_NLQ":
-        dataset = NaturalLanguageQueries(**kwargs)
-    elif dataset_name == "Ego4D_MQ":
-        dataset = MomentQueries(**kwargs)
+
+    if dataset_name == "EgoClip_CF":
+        dataset = EgoClip_CF(**kwargs) # here
+
     else:
         raise NotImplementedError(f"Dataset: {dataset_name} not found.")
 
