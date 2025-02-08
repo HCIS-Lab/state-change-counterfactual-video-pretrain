@@ -37,7 +37,7 @@ class EgoClip_CF(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', error_bad_lines=False)
             self.frame_sample = 'rand'
             # with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
             #     self.state_metadata = json.load(json_file)
@@ -122,7 +122,7 @@ class EgoClip_CF(TextVideoDataset):
         if filename[0].isnumeric():
             filename = '_' + filename
 
-        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
+        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
@@ -166,7 +166,7 @@ class EgoClip_CF(TextVideoDataset):
         if filename[0].isnumeric():
             filename = '_' + filename
 
-        symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_egoMCQ_FLAVA" # make this a self.symlink_dir on init function
+        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_egoMCQ_FLAVA" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)

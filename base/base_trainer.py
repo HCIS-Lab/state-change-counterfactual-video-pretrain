@@ -9,6 +9,7 @@ from abc import abstractmethod
 
 import torch
 from numpy import inf
+import wandb
 
 
 class BaseTrainer:
@@ -330,6 +331,8 @@ class Multi_BaseTrainer:
         if self.init_val:
             _ = self._valid_epoch(-1)
             # pass
+        if self.args.rank == 0:
+            wandb.watch(self.model, criterion=self.loss, log='all', log_freq=100)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             result = self._train_epoch(epoch)

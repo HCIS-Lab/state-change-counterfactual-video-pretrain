@@ -185,7 +185,7 @@ class InfoNCE(nn.Module):
         # print("tcn_0", tcn_0.shape)
         # print("tcn_3", tcn_3.shape)
         
-        tcn = ((tcn_3 + tcn_0) / 2.0).mean()
+        tcn = 0.2*((tcn_3 + tcn_0) / 2.0).mean()
         loss_dict['tcn'] = tcn.item()
 
         loss = loss_align + tcn

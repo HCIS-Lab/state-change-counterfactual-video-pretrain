@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 import torch.distributed as dist
 from datetime import datetime
 from base import Multi_BaseTrainer_dist
-from model.model import sim_matrix
+from model.loss import sim_matrix
 
 from utils import inf_loop
 

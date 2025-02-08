@@ -6,7 +6,7 @@
 
 # our command:
 
-# python -m torch.distributed.launch  --nnodes 1 --node_rank 0 --nproc_per_node 8  --master_port 8081  run/train_egoclip_cf.py --config configs/pt/egoclip_cf.json --rank 0
+# torchrun  --nnodes 1 --nproc_per_node 8 --master_port 8081  run/train_egoclip_cf.py --config configs/pt/egoclip_cf.json
 
 import os
 import argparse
@@ -26,10 +26,11 @@ from parse_config import ConfigParser
 from trainer.trainer_egoclip_cf import Multi_Trainer_CF
 from utils.util import replace_nested_dict_item
 from tensorboardX import SummaryWriter
+import wandb
 
 ex = Experiment('train')
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2,4,6,7"
 
 @ex.main
 def run(config, args):
@@ -66,8 +67,8 @@ def run(config, args):
     # setup data_loader instances
     data_loader = init_dataloaders(config, module_data)
     if args.rank == 0:
-        print('Train dataset: ', [x.n_samples for x in data_loader], ' samples')
-        print('Val dataset: ', [x.n_samples for x in valid_data_loader], ' samples')
+        print('Train dataset: ', [x.n_samples for x in data_loader[0]], ' samples')
+        print('Val dataset: ', [x.n_samples for x in data_loader[1]], ' samples')
     # build model architecture, then print to console
 
     args.learning_rate1 = config['optimizer']['args']['lr']
@@ -100,8 +101,8 @@ def run(config, args):
 
     trainer = Multi_Trainer_CF(args, model, loss, metrics, optimizer,
                       config=config,
-                      data_loader=data_loader,
-                      valid_data_loader=valid_data_loader,
+                      data_loader=data_loader[0],
+                      valid_data_loader=data_loader[1],
                       lr_scheduler=lr_scheduler,
                       visualizer=visualizer,
                       writer=writer,
@@ -184,6 +185,8 @@ if __name__ == '__main__':
     ex.add_config(config._config)
 
     if args.rank == 0:
+        wandb.login()
+        wandb.init(project="ego4d_vlm_FLAVA_v2")
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
     print("The rank(local) of this node is {}({})".format(args.rank, args.local_rank))

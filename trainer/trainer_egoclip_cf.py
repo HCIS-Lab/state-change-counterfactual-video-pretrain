@@ -15,9 +15,10 @@ import torch.distributed as dist
 from datetime import datetime
 
 from base.base_trainer import Multi_BaseTrainer
-from model.model import sim_matrix
+from model.loss import sim_matrix
 
 from utils import inf_loop
+import wandb
 
 class AllGather_multi(torch.autograd.Function):
     """An autograd function that performs allgather on a tensor."""
@@ -45,13 +46,14 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
         Inherited from BaseTrainer.
     """
 
-    def __init__(self, args, model, loss, metrics, optimizer, config, data_loader,
+    def __init__(self, args, model, loss, metrics, optimizer, config, data_loader, valid_data_loader,
                  lr_scheduler=None, len_epoch=None, writer=None,
                  visualizer=None, tokenizer=None, max_samples_per_epoch=50000, start_epoch=1):
         super().__init__(args, model, loss, metrics, optimizer, config, writer, start_epoch=start_epoch)
         self.config = config
         self.args = args
         self.data_loader = data_loader
+        self.valid_data_loader = valid_data_loader
         if len_epoch is None:
             # epoch-based training
             # take the min
@@ -158,7 +160,8 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                     loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
                                                 frame_embeds)
-
+                if self.args.rank == 0:
+                    wandb.log(loss_dict)
                 loss.backward()
                 self.optimizer.step()
 
