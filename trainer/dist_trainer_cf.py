@@ -116,8 +116,8 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 break
             for dl_idx, data in enumerate(data_li):
                 if 'video_neg' in data.keys():  # w/ negative sampling
-                    data['narration'] = data['narration'] + data['text_neg_feat']
                     data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
+                    data['narration'] = torch.cat( (data['narration'], data['text_neg_feat']), axis = 0)
                     data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
                     data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
