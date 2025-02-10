@@ -113,6 +113,7 @@ class TextVideoDataLoader(BaseDataLoaderExplicitSplit):
 
         super().__init__(dataset, batch_size, shuffle, num_workers)
         self.dataset_name = dataset_name
+        self.neg_param = neg_param
 
 class DistTextVideoDataLoader(DistBaseDataLoaderExplicitSplit):
     def __init__(self,
