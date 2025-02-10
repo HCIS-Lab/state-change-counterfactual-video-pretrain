@@ -28,7 +28,7 @@ import torchvision.models as models
 import transformers
 from tensorboardX import SummaryWriter
 import data_loader.data_loader as module_data
-from trainer import Multi_Trainer_dist_MIR
+# from trainer import Multi_Trainer_dist_MIR
 import model.loss as module_loss
 import model.metric as module_metric
 import model.model as module_arch
@@ -40,12 +40,8 @@ from parse_config import ConfigParser
 import utils.visualizer as module_vis
 from utils.util import replace_nested_dict_item, load_checkpoint_after_preemption
 
-from run.distributed_epic import main_worker as epic_main_worker
-from run.distributed_egoclip import main_worker as egoclip_main_worker
 from run.distributed_egoclip_cf import main_worker as egoclip_main_worker_cf
-from run.distributed_charades import main_worker as charades_main_worker
-from run.distributed_egoaggregation import main_worker as egoaggregation_main_worker
-from run.distributed_howto100m import main_worker as howto100m_main_worker
+
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")

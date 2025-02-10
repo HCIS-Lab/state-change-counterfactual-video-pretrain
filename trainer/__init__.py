@@ -6,10 +6,5 @@
 
 
 from .trainer_egoclip_cf import *
-from .trainer_egoaggregate import *
-# from .trainer_epic import *
-# from .trainer_charades import *
-# from .trainer_howto100m_classification import *
-from .trainer_egoclip_cf import *
 from .dist_trainer_cf import *
 
