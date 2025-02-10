@@ -153,11 +153,14 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 self.optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
                     video_embeds, frame_embeds = self.model(data['video'])
-                    video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
-                    frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
-                    loss_dict, loss = self.loss(text_embeds, video_embeds, \
+                    num_neg = self.config['data_loader']['args']['neg_param']
+                    if num_neg != False:
+                        frame_embeds = frame_embeds[:int(num_neg)]
+                    all_video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
+                    all_frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
+                    loss_dict, loss = self.loss(text_embeds, all_video_embeds, \
                                                 v_embeds, n_embeds, 
-                                                frame_embeds)
+                                                all_frame_embeds)
                 loss.backward()
                 self.optimizer.step()
 
