@@ -150,7 +150,7 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                 self.optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
                     video_embeds, frame_embeds = self.model(data['video'])
-                    num_neg = self.config['data_loader']['args']['neg_param']
+                    num_neg = self.config['data_loader'][0]['args']['neg_param']
                     if num_neg != False:
                         frame_embeds = frame_embeds[:int(num_neg)]
                     video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
