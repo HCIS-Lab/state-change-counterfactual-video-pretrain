@@ -145,12 +145,13 @@ class EgoClip_CF(TextVideoDataset):
             sample_neg = self.metadata[self.metadata.segment_id==sample.segment_id].sample(1).iloc[0]
             video_fp_neg, video_sec_neg, bound_sec_neg = self._get_video_path(sample_neg)
             caption_neg, noun_vec_neg, verb_vec_neg = self._get_caption(sample_neg)
+            text_neg_feat, _, _, _, _, _ = self._get_state_features(sample_neg)
             final_neg = self._get_video_frames(video_fp_neg, video_sec_neg, bound_sec_neg)
 
         meta_arr = {'raw_captions': caption, 'paths': video_fp, 'dataset': self.dataset_name}
         if self.neg_param:
             return {'video': final, 'text': caption,
-                    'video_neg': final_neg, 'text_neg': caption_neg,
+                    'video_neg': final_neg, 'text_neg': caption_neg, 'text_neg_feat': text_neg_feat,
                     'meta': meta_arr,
                     'noun_vec': noun_vec, 'verb_vec': verb_vec,
                     'noun_vec_neg': noun_vec_neg, 'verb_vec_neg': verb_vec_neg,

@@ -49,6 +49,7 @@ class CF(BaseModel):
                 # vit_model = timm.models.vision_transformer.vit_base_patch16_224(pretrained=pretrained)
                 # vit_model = torch.load("pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 vit_model = torch.load("/nfs/wattrel/data/md0/datasets/state_aware/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
+                vit_model = torch.load("/N/project/ego4d_vlm/state-aware-video-pretrain/pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 print("pre-trained model found.")
                 model = SpaceTimeTransformer(num_frames=num_frames,
                                             drop_rate=drop_rate,

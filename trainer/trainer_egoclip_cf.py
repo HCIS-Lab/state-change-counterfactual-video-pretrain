@@ -116,13 +116,11 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
             if (batch_idx + 1) * self.total_batch_sum > self.max_samples_per_epoch:
                 break
             for dl_idx, data in enumerate(data_li):
-                # then assume we must tokenize the input, e.g. its a string
-                # if 'video_neg' in data.keys():  # w/ negative sampling
-                #     # data['text'] = data['text'] + data['text_neg']
-                #     # data['text_neg'] = data['text_neg'].to(self.device)
-                #     # data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
-                #     # data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
-                #     # data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
+                if 'video_neg' in data.keys():  # w/ negative sampling
+                    data['narration'] = data['narration'] + data['text_neg_feat']
+                    data['video'] = torch.cat( (data['video'], data['video_neg']), axis = 0)
+                    data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
+                    data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
                 data['narration'] = data['narration'].to(self.device)
                 data['before'] = data['before'].to(self.device)
