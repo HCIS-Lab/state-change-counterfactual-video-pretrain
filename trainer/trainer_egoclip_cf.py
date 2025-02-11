@@ -208,10 +208,10 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                 tl = total_loss[dl_idx] / self.len_epoch
                 self.writer.add_scalar(f'Loss_training/loss_total_{dl_idx}', tl, epoch-1)
 
-        if self.do_validation:
-            val_log = self._valid_epoch(epoch)
-            if self.args.rank == 0:
-                log.update(val_log)
+        # if self.do_validation:
+        #     val_log = self._valid_epoch(epoch)
+        #     if self.args.rank == 0:
+        #         log.update(val_log)
 
         self._adjust_learning_rate(self.optimizer, epoch, self.args)
 
