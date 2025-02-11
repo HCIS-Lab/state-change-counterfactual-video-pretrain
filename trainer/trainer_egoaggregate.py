@@ -14,7 +14,7 @@ from datetime import datetime
 import random
 
 from base import Multi_BaseTrainer_dist
-from model.loss import sim_matrix
+from model.model import sim_matrix
 from utils import inf_loop
 
 class AllGather_multi(torch.autograd.Function):
