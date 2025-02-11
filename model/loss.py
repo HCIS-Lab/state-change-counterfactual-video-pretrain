@@ -86,31 +86,31 @@ class InfoNCE(nn.Module):
         # EgoNCE
         x = sim_matrix(video_embeds, narration)
         mask_diag = torch.eye(x.shape[0]).cuda()
-        mask_offDiag = (mask_diag == 0)*1
+        # mask_offDiag = (mask_diag == 0)*1
 
-        align_sm = torch.exp(x/self.temperature)
-        denom_align = (align_sm*mask_offDiag).sum(-1, keepdim=False)
-        align_sm_sum = (align_sm*mask_diag).sum(-1, keepdim=False)
-        # print("denom_align", denom_align.shape)
-        # print("align_sm_sum", align_sm_sum.shape)
-        idiag = torch.log(align_sm_sum / denom_align) # TODO check division
-        loss_align = idiag.mean()
+        # align_sm = torch.exp(x/self.temperature)
+        # denom_align = (align_sm*mask_offDiag).sum(-1, keepdim=False)
+        # align_sm_sum = (align_sm*mask_diag).sum(-1, keepdim=False)
+        # # print("denom_align", denom_align.shape)
+        # # print("align_sm_sum", align_sm_sum.shape)
+        # idiag = torch.log(align_sm_sum / denom_align) # TODO check division
+        # loss_align = idiag.mean()
 
-        # mask_v = sim_matrix(v_embeds, v_embeds)
-        # mask_n = sim_matrix(n_embeds, n_embeds)
-        # if self.noun and self.verb:
-        #     mask = mask_v * mask_n + mask_diag
-        # elif self.noun:
-        #     mask = mask_n + mask_diag
-        # else:
-        #     mask = mask_v + mask_diag
+        mask_v = sim_matrix(v_embeds, v_embeds)
+        mask_n = sim_matrix(n_embeds, n_embeds)
+        if self.noun and self.verb:
+            mask = mask_v * mask_n + mask_diag
+        elif self.noun:
+            mask = mask_n + mask_diag
+        else:
+            mask = mask_v + mask_diag
 
-        # "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
-        # align_sm = F.softmax(x/self.temperature, dim=1)
-        # # mask_bool = mask > 0
-        # idiag = torch.log(torch.sum(align_sm * mask_diag, dim=1) )
+        "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
+        align_sm = F.softmax(x/self.temperature, dim=1)
+        mask_bool = (mask > 0)*1
+        idiag = torch.log(torch.sum(align_sm * mask_bool, dim=1) )
 
-        # loss_align = idiag.sum() / len(idiag)
+        loss_align = idiag.sum() / len(idiag)
         loss_align = - loss_align 
         loss_dict['align'] = loss_align.item()
         
