@@ -68,16 +68,22 @@ class InfoNCE(nn.Module):
         self.noun = noun
         self.verb = verb
 
-    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
+    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds, summary=False):
         loss_dict = {}
         epsilon = 1e-8
-        narration, before, after, CF1, CF2, CF3 = text_embeds
-        narration.requires_grad = False
-        before.requires_grad = False
-        after.requires_grad = False
-        CF1.requires_grad = False
-        CF2.requires_grad = False
-        CF3.requires_grad = False
+        if not summary:
+            narration, before, after, CF1, CF2, CF3 = text_embeds
+            narration.requires_grad = False
+            before.requires_grad = False
+            after.requires_grad = False
+            CF1.requires_grad = False
+            CF2.requires_grad = False
+            CF3.requires_grad = False
+        
+        else:
+            summary = text_embeds[0, :]
+            order_cf = [text_embeds[i, :] for i in range(1,11)]
+            key_cf = [text_embeds[i, :] for i in range(11,21)]
 
         # video_text_alignment
         assert video_embeds.requires_grad
