@@ -10,6 +10,7 @@ import json
 import math
 import random
 import pandas as pd
+import numpy as np
 
 from base.base_dataset import TextVideoDataset
 from data_loader.transforms import init_transform_dict, init_video_transform_dict
@@ -175,6 +176,23 @@ class EgoAggregation(TextVideoDataset):
             final_frames.append(frames_clip)
         return torch.stack(final_frames)
         #print('Overall : {}'.format(final.shape))
+    
+    def _get_state_features(self, narration):
+
+        filename =  "".join(x for x in narration if x.isalnum())
+        if filename[0].isnumeric():
+            filename = '_' + filename
+        
+        embed_dir = "language_features/summary_embeddings_FLAVA"
+        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
+
+        features_path = os.path.join(symlink_dir, embed_dir, filename)
+        features = np.load(features_path[:245] + '.npy', allow_pickle=True)
+        features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
+
+        # return narration, 10 order CFs, 10 key CFs
+        return features[:, 0, :]
+    
 
     def _get_train_item(self, item):
         item = item % len(self.metadata)
@@ -185,6 +203,7 @@ class EgoAggregation(TextVideoDataset):
 
         # Summary Text
         caption, noun_vec, verb_vec = self._get_caption(sample)
+        text_feats = self._get_state_features(caption)
         # Text aggregation
         try:
             aggregated_caption, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
@@ -209,7 +228,8 @@ class EgoAggregation(TextVideoDataset):
             'noun_vec': noun_vec,
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
-            'aggregated_verb_vec': aggregated_verb_vec
+            'aggregated_verb_vec': aggregated_verb_vec,
+            'text_feats': text_feats,
         }
 
     def _get_val_item(self, item):
