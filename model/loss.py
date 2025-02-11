@@ -68,22 +68,17 @@ class InfoNCE(nn.Module):
         self.noun = noun
         self.verb = verb
 
-    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds, summary=False):
+    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
         loss_dict = {}
         epsilon = 1e-8
-        if not summary:
-            narration, before, after, CF1, CF2, CF3 = text_embeds
-            narration.requires_grad = False
-            before.requires_grad = False
-            after.requires_grad = False
-            CF1.requires_grad = False
-            CF2.requires_grad = False
-            CF3.requires_grad = False
-        
-        else:
-            summary = text_embeds[0, :]
-            order_cf = [text_embeds[i, :] for i in range(1,11)]
-            key_cf = [text_embeds[i, :] for i in range(11,21)]
+
+        narration, before, after, CF1, CF2, CF3 = text_embeds
+        narration.requires_grad = False
+        before.requires_grad = False
+        after.requires_grad = False
+        CF1.requires_grad = False
+        CF2.requires_grad = False
+        CF3.requires_grad = False
 
         # video_text_alignment
         assert video_embeds.requires_grad
@@ -92,18 +87,10 @@ class InfoNCE(nn.Module):
         # EgoNCE
         x = sim_matrix(video_embeds, narration)
         mask_diag = torch.eye(x.shape[0]).cuda()
-        # mask_offDiag = (mask_diag == 0)*1
-
-        # align_sm = torch.exp(x/self.temperature)
-        # denom_align = (align_sm*mask_offDiag).sum(-1, keepdim=False)
-        # align_sm_sum = (align_sm*mask_diag).sum(-1, keepdim=False)
-        # # print("denom_align", denom_align.shape)
-        # # print("align_sm_sum", align_sm_sum.shape)
-        # idiag = torch.log(align_sm_sum / denom_align) # TODO check division
-        # loss_align = idiag.mean()
 
         mask_v = sim_matrix(v_embeds, v_embeds)
         mask_n = sim_matrix(n_embeds, n_embeds)
+        
         if self.noun and self.verb:
             mask = mask_v * mask_n + mask_diag
         elif self.noun:
@@ -112,7 +99,7 @@ class InfoNCE(nn.Module):
             mask = mask_v + mask_diag
 
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
-        align_sm = F.softmax(x/self.temperature, dim=1)
+        align_sm = F.softmax(x/self.temperature, dim=1) 
         mask_bool = (mask > 0)*1
         idiag = torch.log(torch.sum(align_sm * mask_bool, dim=1) )
 
@@ -148,6 +135,8 @@ class InfoNCE(nn.Module):
 
         # For the specified number of negatives from other videos
         # Add it as a negative
+
+        # TODO: check this
         neg0 = []
         neg3 = []
         for _ in range(self.num_neg):
@@ -157,38 +146,17 @@ class InfoNCE(nn.Module):
             neg3.append(sim(f3, f3_shuf))
         neg0 = torch.stack(neg0, -1)
         neg3 = torch.stack(neg3, -1)
-        
-        # neg0 = []
-        # neg3 = []
-        # for _ in range(self.num_neg):
-        #     while True:
-        #         f0_shuf = f0[torch.randperm(f0.size(0))]
-        #         if not torch.equal(f0, f0_shuf) and not torch.all(f0 == f0_shuf.sort()[0]):
-        #             break
-        #     while True:
-        #         f3_shuf = f3[torch.randperm(f3.size(0))]
-        #         if not torch.equal(f3, f3_shuf) and not torch.all(f3 == f3_shuf.sort()[0]):
-        #             break
-            
-        #     neg0.append(sim(f0, f0_shuf))
-        #     neg3.append(sim(f3, f3_shuf))
-
-        # neg0 = torch.stack(neg0, -1)
-        # neg3 = torch.stack(neg3, -1)
+    
 
         denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
               torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
               torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) #+ \
             #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
-        
-        # print("denom_tcn_0", denom_tcn_0.shape)
 
         denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
                 torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
                 torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
                 # (torch.exp(neg3) / self.num_neg).sum(-1)
-
-        # print("denom_tcn_3", denom_tcn_3.shape)
 
         tcn_0 = -torch.log((torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0) - torch.log((torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0)
         tcn_3 = -torch.log((torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3) - torch.log((torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3)
@@ -196,17 +164,20 @@ class InfoNCE(nn.Module):
         tcn_0 /= 2
         tcn_3 /= 2
 
-        # print("tcn_0", tcn_0)
-        # print("tcn_3", tcn_3)
-
-        # print("tcn_0", tcn_0.shape)
-        # print("tcn_3", tcn_3.shape)
         
         tcn = ((tcn_3 + tcn_0) / 2.0).mean()
         loss_dict['tcn'] = tcn.item()
 
         loss = loss_align + tcn
         return loss_dict, loss
+    
+    def forward_summary(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
+        epsilon  = 1e-8
+        sim = F.cosine_similarity(video_embeds, text_embeds, dim=-1)
+        sim_exp = torch.exp(sim/self.temperature) + epsilon
+        summary_loss = -torch.log( sim_exp[0]) + torch.logsumexp(sim_exp[1:], dim=0, keepdim=False )
+
+        return summary_loss
 
 def sim(tensor1, tensor2):
     cs = torch.nn.CosineSimilarity(1)
