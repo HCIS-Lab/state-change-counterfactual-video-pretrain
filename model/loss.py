@@ -152,35 +152,35 @@ class InfoNCE(nn.Module):
         neg0 = torch.stack(neg0, -1)
         neg3 = torch.stack(neg3, -1)
         
-        neg0 = []
-        neg3 = []
-        for _ in range(self.num_neg):
-            while True:
-                f0_shuf = f0[torch.randperm(f0.size(0))]
-                if not torch.equal(f0, f0_shuf) and not torch.all(f0 == f0_shuf.sort()[0]):
-                    break
-            while True:
-                f3_shuf = f3[torch.randperm(f3.size(0))]
-                if not torch.equal(f3, f3_shuf) and not torch.all(f3 == f3_shuf.sort()[0]):
-                    break
+        # neg0 = []
+        # neg3 = []
+        # for _ in range(self.num_neg):
+        #     while True:
+        #         f0_shuf = f0[torch.randperm(f0.size(0))]
+        #         if not torch.equal(f0, f0_shuf) and not torch.all(f0 == f0_shuf.sort()[0]):
+        #             break
+        #     while True:
+        #         f3_shuf = f3[torch.randperm(f3.size(0))]
+        #         if not torch.equal(f3, f3_shuf) and not torch.all(f3 == f3_shuf.sort()[0]):
+        #             break
             
-            neg0.append(sim(f0, f0_shuf))
-            neg3.append(sim(f3, f3_shuf))
+        #     neg0.append(sim(f0, f0_shuf))
+        #     neg3.append(sim(f3, f3_shuf))
 
-        neg0 = torch.stack(neg0, -1)
-        neg3 = torch.stack(neg3, -1)
+        # neg0 = torch.stack(neg0, -1)
+        # neg3 = torch.stack(neg3, -1)
 
         denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
               torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
-              torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) + \
-              (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
+              torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) #+ \
+            #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
         
         # print("denom_tcn_0", denom_tcn_0.shape)
 
         denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
                 torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
-                torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) + \
-                (torch.exp(neg3) / self.num_neg).sum(-1)
+                torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
+                # (torch.exp(neg3) / self.num_neg).sum(-1)
 
         # print("denom_tcn_3", denom_tcn_3.shape)
 

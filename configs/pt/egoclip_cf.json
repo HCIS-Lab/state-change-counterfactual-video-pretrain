@@ -1,6 +1,6 @@
 {
     "name": "EgoClip_CF",
-    "n_gpu": 4,
+    "n_gpu": 8,
     "arch": {
         "type": "CF",
         "args": {
@@ -9,7 +9,7 @@
                 "arch_config": "base_patch16_224",
                 "num_frames": 16,
                 "pretrained": true,
-                "time_init": "zeros"
+                "time_init": "rand"
             },
             "text_params": {
                 "model": "distilbert-base-uncased",
@@ -31,7 +31,7 @@
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 8,
-                        "batch_size": 32,
+                        "batch_size": 21,
                         "split": "train",
                         "subsample": "mcq",
                         "text_params": {
@@ -63,10 +63,10 @@
     "trainer": {
         "epochs": 10,
         "max_samples_per_epoch": 500000,
-        "save_dir": "results/EgoClip_4f",
+        "save_dir": "/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF",
         "save_period": 1,
         "verbosity": 2,
-        "monitor": "min val_loss_0",
+        "monitor": "off",
         "early_stop": 10,
         "init_val": false,
         "neptune": false,
