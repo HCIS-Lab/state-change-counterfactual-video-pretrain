@@ -152,7 +152,7 @@ class Multi_Trainer_CF(Multi_BaseTrainer):
                     video_embeds, frame_embeds = self.model(data['video'])
                     num_neg = self.config['data_loader'][0]['args']['neg_param']
                     if num_neg != False:
-                        frame_embeds = frame_embeds[:int(num_neg)]
+                        frame_embeds = frame_embeds[:self.batch_size]
                     video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
                     frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
                     n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
