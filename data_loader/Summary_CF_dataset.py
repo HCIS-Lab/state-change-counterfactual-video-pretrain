@@ -229,7 +229,7 @@ class EgoAggregation(TextVideoDataset):
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
             'aggregated_verb_vec': aggregated_verb_vec,
-            'text_feats': text_feats,
+            'summary_feats': text_feats,
         }
 
     def _get_val_item(self, item):

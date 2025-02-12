@@ -41,6 +41,7 @@ import utils.visualizer as module_vis
 from utils.util import replace_nested_dict_item, load_checkpoint_after_preemption
 
 from run.distributed_egoclip_cf import main_worker as egoclip_main_worker_cf
+from run.distributed_egoaggregation import main_worker as egoaggregation_main_worker
 
 
 model_names = sorted(name for name in models.__dict__

@@ -37,7 +37,7 @@ class EgoClip_CF(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', error_bad_lines=False)
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
             self.frame_sample = 'rand'
             # with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
             #     self.state_metadata = json.load(json_file)
@@ -121,8 +121,8 @@ class EgoClip_CF(TextVideoDataset):
         filename =  "".join(x for x in narration if x.isalnum())
         if filename[0].isnumeric():
             filename = '_' + filename
-
         symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
+        # symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
@@ -145,13 +145,14 @@ class EgoClip_CF(TextVideoDataset):
             sample_neg = self.metadata[self.metadata.segment_id==sample.segment_id].sample(1).iloc[0]
             video_fp_neg, video_sec_neg, bound_sec_neg = self._get_video_path(sample_neg)
             caption_neg, noun_vec_neg, verb_vec_neg = self._get_caption(sample_neg)
-            text_neg_feat, _, _, _, _, _ = self._get_state_features(sample_neg)
+            text_neg_feat, neg_before, neg_after, neg_cf1, neg_cf2, neg_cf3 = self._get_state_features(sample_neg)
             final_neg = self._get_video_frames(video_fp_neg, video_sec_neg, bound_sec_neg)
 
         meta_arr = {'raw_captions': caption, 'paths': video_fp, 'dataset': self.dataset_name}
         if self.neg_param:
             return {'video': final, 'text': caption,
                     'video_neg': final_neg, 'text_neg': caption_neg, 'text_neg_feat': text_neg_feat,
+                    'neg_before': neg_before, 'neg_after': neg_after, 'neg_cf1': neg_cf1, 'neg_cf2': neg_cf2, 'neg_cf3': neg_cf3,
                     'meta': meta_arr,
                     'noun_vec': noun_vec, 'verb_vec': verb_vec,
                     'noun_vec_neg': noun_vec_neg, 'verb_vec_neg': verb_vec_neg,
