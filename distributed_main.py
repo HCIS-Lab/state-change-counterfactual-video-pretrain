@@ -28,7 +28,6 @@ import torchvision.models as models
 import transformers
 from tensorboardX import SummaryWriter
 import data_loader.data_loader as module_data
-# from trainer import Multi_Trainer_dist_MIR
 import model.loss as module_loss
 import model.metric as module_metric
 import model.counterfactual as module_arch
@@ -136,11 +135,6 @@ def main():
     if recovered_checkpoint is not None:
         config["arch"]["args"]["load_checkpoint"] = recovered_checkpoint
         config["trainer"]["start_epoch"] = recovered_epoch + 1
-    # if args.experiment == "epic_mir":
-    #     # Only for EPIC-MIR
-    #     if config["loss"]["args"]["margin"] != args.epic_loss_margin:
-    #         print('Different margin in config and command line args. Setting command line margin value: {}...'.format(args.epic_loss_margin))
-    #         config["loss"]["args"]["margin"] = args.epic_loss_margin
     ex.add_config(config._config)
     ##########################
 
