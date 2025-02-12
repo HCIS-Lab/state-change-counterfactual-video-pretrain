@@ -121,6 +121,12 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     data['noun_vec'] = torch.cat((data['noun_vec'], data['noun_vec_neg']), axis=0)
                     data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
 
+                    data['before'] = torch.cat((data['before'], data['neg_before']), axis = 0)
+                    data['after'] = torch.cat((data['after'], data['neg_after']), axis = 0)
+                    data['CF1'] = torch.cat((data['CF1'], data['neg_cf1']), axis = 0)
+                    data['CF2'] = torch.cat((data['CF2'], data['neg_cf2']), axis = 0)
+                    data['CF3'] = torch.cat((data['CF3'], data['neg_cf3']), axis = 0)
+
                 data['narration'] = data['narration'].to(self.device)
                 data['before'] = data['before'].to(self.device)
                 data['after'] = data['after'].to(self.device)
@@ -128,6 +134,8 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 data['CF2'] = data['CF2'].to(self.device)
                 data['CF3'] = data['CF3'].to(self.device)
                 data['video'] = data['video'].to(self.device)
+                n_embeds = data['noun_vec'].to(self.device)
+                v_embeds = data['verb_vec'].to(self.device)
 
                 data['narration'].requires_grad = False
                 data['before'].requires_grad = False
@@ -135,9 +143,7 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                 data['CF1'].requires_grad = False
                 data['CF2'].requires_grad = False
                 data['CF3'].requires_grad = False
-                n_embeds = data['noun_vec'].to(self.device)
-                v_embeds = data['verb_vec'].to(self.device)
-
+                
                 with torch.no_grad():  # Avoid unnecessary gradient tracking
                     narration = self.allgather(data['narration'], self.n_gpu, self.args)
                     before = self.allgather(data['before'], self.n_gpu, self.args)
@@ -147,20 +153,21 @@ class Multi_Trainer_dist_CF(Multi_BaseTrainer_dist):
                     CF3 = self.allgather(data['CF3'], self.n_gpu, self.args)
                     text_embeds = [narration, before, after, CF1, CF2, CF3]
 
-                    n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
-                    v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
-
                 self.optimizer.zero_grad()
                 with torch.set_grad_enabled(True):
                     video_embeds, frame_embeds = self.model(data['video'])
                     num_neg = self.config['data_loader'][0]['args']['neg_param']
-                    if num_neg != False:
-                        frame_embeds = frame_embeds[:self.batch_size]
+                    # if num_neg != False:
+                    #     frame_embeds = frame_embeds[:self.batch_size]
+
                     all_video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
                     all_frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
+                    n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
+                    v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
+
                     loss_dict, loss = self.loss(text_embeds, all_video_embeds, \
                                                 v_embeds, n_embeds, 
-                                                all_frame_embeds)
+                                                all_frame_embeds, neg_text_embeds)
                 loss.backward()
                 self.optimizer.step()
 
