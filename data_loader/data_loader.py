@@ -73,6 +73,8 @@ def dataset_loader(dataset_name,
 
     if dataset_name == "EgoClip_CF":
         dataset = EgoClip_CF(**kwargs) # here
+    elif dataset_name == "EgoAggregation":
+        dataset = EgoAggregation(**kwargs)
 
     else:
         raise NotImplementedError(f"Dataset: {dataset_name} not found.")

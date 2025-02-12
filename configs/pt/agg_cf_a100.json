@@ -29,7 +29,7 @@
                 {
                     "type": "MultiDistTextVideoDataLoader",
                     "args":{
-                        "dataset_name": "EgoClip",
+                        "dataset_name": "EgoClip_CF",
                         "data_dir": "/N/project/ego4d_vlm/ego4d_chunked/",
                         "meta_dir": "/N/project/ego4d_vlm/",
                         "reader": "cv2_egoclip",
