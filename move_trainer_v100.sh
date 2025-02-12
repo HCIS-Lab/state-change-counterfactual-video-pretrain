@@ -25,7 +25,7 @@ cp -R trainer/ $DESTINATION_DIR/$JOB_NAME/
 cp -R utils/ $DESTINATION_DIR/$JOB_NAME/
 cp parse_config.py $DESTINATION_DIR/$JOB_NAME/
 cp distributed_main.py $DESTINATION_DIR/$JOB_NAME/
-cp trainer_clip_v100.sh $DESTINATION_DIR/$JOB_NAME/trainer_local.sh
+cp trainer_v100.sh $DESTINATION_DIR/$JOB_NAME/trainer_local.sh
 
 cd $DESTINATION_DIR/$JOB_NAME/
 

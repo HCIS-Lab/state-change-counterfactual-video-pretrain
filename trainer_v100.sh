@@ -19,7 +19,7 @@
 echo "SLURM_JOBID: " $SLURM_JOBID
 MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 MASTER_PORT=6000
-GPUS_PER_NODE=2
+GPUS_PER_NODE=4
 NNODES=$SLURM_NNODES
 
 export JOB_NAME=$SLURM_JOB_NAME
@@ -33,4 +33,4 @@ module load ffmpeg
 # Print allocated GPUs for debugging
 echo "Allocated GPUs:"
 
-srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/clip_cf_a100.json --experiment egoclip_cf
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/agg_cf_v100.json --experiment egoaggregation

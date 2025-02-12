@@ -6,11 +6,11 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-#SBATCH --partition=gpu
+#SBATCH --partition=hopper
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=256G
+#SBATCH --mem=500G
 #SBATCH --cpus-per-task=32
 #SBATCH --time=48:00:00
 #SBATCH --output=slurm/%x-%j.out
@@ -24,13 +24,15 @@ NNODES=$SLURM_NNODES
 
 export JOB_NAME=$SLURM_JOB_NAME
 export NCCL_DEBUG=INFO
+export NCCL_SOCKET_IFNAME=enp33s0
+module load ffmpeg/4.0.2
 
 #module load conda
 module --ignore-cache load "conda"
 source ~/.bashrc
-conda activate hiervl
+conda activate hopper
 module load ffmpeg
 # Print allocated GPUs for debugging
 echo "Allocated GPUs:"
 
-srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/clip_cf_v100.json --experiment egoclip_cf
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/clip_cf_h100.json --experiment egoaggregation
