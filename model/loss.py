@@ -117,35 +117,37 @@ class InfoNCE(nn.Module):
         f2 = frame_embeds[:, 2]
         f3 = frame_embeds[:, 3]
 
-        sim_0_1 = sim(f0, f1)
-        sim_0_3 = sim(f0, f3)
-        sim_0_before = sim(f0, before)
-        sim_0_after = sim(f0, after)
-        sim_0_cf1 = sim(f0, CF1)
-        sim_0_cf2 = sim(f0, CF2)
-        sim_0_cf3 = sim(f0, CF3)
+        sim_0_1 = sim_matrix(f0, f1)
+        sim_0_3 = sim_matrix(f0, f3)
+        sim_0_before = sim_matrix(f0, before)
+        sim_0_after = sim_matrix(f0, after)
+        sim_0_cf1 = sim_matrix(f0, CF1)
+        sim_0_cf2 = sim_matrix(f0, CF2)
+        sim_0_cf3 = sim_matrix(f0, CF3)
 
-        sim_3_0 = sim(f3, f0) 
-        sim_3_2 = sim(f3, f2)
-        sim_3_after = sim(f3, after)
-        sim_3_before = sim(f3, before)
-        sim_3_cf1 = sim(f3, CF1)
-        sim_3_cf2 = sim(f3, CF2)
-        sim_3_cf3 = sim(f3, CF3)
+        sim_3_0 = sim_matrix(f3, f0) 
+        sim_3_2 = sim_matrix(f3, f2)
+        sim_3_after = sim_matrix(f3, after)
+        sim_3_before = sim_matrix(f3, before)
+        sim_3_cf1 = sim_matrix(f3, CF1)
+        sim_3_cf2 = sim_matrix(f3, CF2)
+        sim_3_cf3 = sim_matrix(f3, CF3)
+
+        eye_mask = torch.eye(sim_0_1.shape[0]).cuda()
 
         # For the specified number of negatives from other videos
         # Add it as a negative
 
         # TODO: check this
-        neg0 = []
-        neg3 = []
-        for _ in range(self.num_neg):
-            f0_shuf = f0[torch.randperm(f0.size()[0])]
-            f3_shuf = f3[torch.randperm(f3.size()[0])]
-            neg0.append(sim(f0, f0_shuf))
-            neg3.append(sim(f3, f3_shuf))
-        neg0 = torch.stack(neg0, -1)
-        neg3 = torch.stack(neg3, -1)
+        # neg0 = []
+        # neg3 = []
+        # for _ in range(self.num_neg):
+        #     f0_shuf = f0[torch.randperm(f0.size()[0])]
+        #     f3_shuf = f3[torch.randperm(f3.size()[0])]
+        #     neg0.append(sim(f0, f0_shuf))
+        #     neg3.append(sim(f3, f3_shuf))
+        # neg0 = torch.stack(neg0, -1)
+        # neg3 = torch.stack(neg3, -1)
     
 
         denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
@@ -157,15 +159,20 @@ class InfoNCE(nn.Module):
                 torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
                 torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
                 # (torch.exp(neg3) / self.num_neg).sum(-1)
-
-        tcn_0 = -torch.log((torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0) - torch.log((torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0)
-        tcn_3 = -torch.log((torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3) - torch.log((torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3)
+        
+        denom_tcn_0 = denom_tcn_0.sum(-1)
+        denom_tcn_3 = denom_tcn_3.sum(-1)
+        
+        tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * eye_mask, dim=-1 ) ) - \
+                 torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * eye_mask, dim=-1 ) )
+        
+        tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * eye_mask, dim=-1 ) ) - \
+                 torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * eye_mask, dim=-1 ) )
         
         tcn_0 /= 2
         tcn_3 /= 2
-
         
-        tcn = ((tcn_3 + tcn_0) / 2.0).mean()
+        tcn = .2*((tcn_3 + tcn_0) / 2.0).mean()
         loss_dict['tcn'] = tcn.item()
 
         loss = loss_align + tcn
