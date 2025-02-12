@@ -97,7 +97,7 @@
         "egomcq_accuracy_metrics"
      ],
     "trainer": {
-        "epochs": 1,
+        "epochs": 10,
         "max_samples_per_epoch": 500000,
         "save_dir": "results/EgoClip_4f",
         "save_period": 1,
