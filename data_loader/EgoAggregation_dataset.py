@@ -176,7 +176,28 @@ class EgoAggregation(TextVideoDataset):
             final_frames.append(frames_clip)
         return torch.stack(final_frames)
         #print('Overall : {}'.format(final.shape))
+
+    def _get_single_features(self, narration):
+       
+        filename =  "".join(x for x in narration if x.isalnum())
+        if filename[0].isnumeric():
+            filename = '_' + filename
+        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
+        # symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
+
+        features_path = os.path.join(symlink_dir, filename + '.npy')
+        features = np.load(features_path, allow_pickle=True)
+        features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
         
+        return torch.unsqueeze(features, dim=0)
+
+    def _get_agg_state_feats(self, sample):
+        
+        features = torch.cat([self._get_single_features(narr) for narr in sample], dim=0)
+
+        # return narration, before, after, cf1, cf2, cf3
+        return [features[:, 0, 0, :], features[:, 1, 0, :], features[:, 2, 0, :], features[:, 3, 0, :], features[:, 4, 0, :], features[:, 5, 0, :]]
+    
     def _get_state_features(self, narration):
 
         filename =  "".join(x for x in narration if x.isalnum())
@@ -204,11 +225,13 @@ class EgoAggregation(TextVideoDataset):
         text_feats = self._get_state_features(caption)
         # Text aggregation
         try:
-            aggregated_caption, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
+            aggregated_caption_temp, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
+            aggregated_caption = self._get_agg_state_feats(aggregated_caption_temp)
         except Exception as e:
             #print('Error in text aggregation: {}. Text length: {}'.format(e, len(self.summarry_narration_hierarchy[sample['clip_text']]["clip_text"])))
             print('Error in text aggregation: {}.'.format(e))
-            aggregated_caption, aggregated_noun_vec, aggregated_verb_vec = self._get_caption(sample)
+            aggregated_caption_temp, aggregated_noun_vec, aggregated_verb_vec = self._get_caption(sample)
+            aggregated_caption = self._get_state_features(aggregated_caption_temp)
 
         #final = final.unsqueeze(0)
 
@@ -220,14 +243,13 @@ class EgoAggregation(TextVideoDataset):
         meta_arr = {'raw_captions': caption, 'paths': None, 'dataset': self.dataset_name}
         return {
             'video': final,
-            'text': caption, #Always returns the summary text features
+            'text': text_feats, #Always returns the summary text features
             'aggregated_text': aggregated_caption, #Always returns the stacked clip text features
             'meta': meta_arr,
             'noun_vec': noun_vec,
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
             'aggregated_verb_vec': aggregated_verb_vec,
-            'summary_feats': text_feats,
         }
 
     def _get_val_item(self, item):
