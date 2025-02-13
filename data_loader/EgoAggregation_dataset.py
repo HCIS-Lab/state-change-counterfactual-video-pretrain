@@ -243,15 +243,15 @@ class EgoAggregation(TextVideoDataset):
         meta_arr = {'raw_captions': caption, 'paths': None, 'dataset': self.dataset_name}
         return {
             'video': final,
-            'summary_feats': text_feats, #Always returns the summary text features
+            'summary_feats': text_feats[0, :], #Always returns the summary text features
             'aggregated_text_feature': aggregated_caption_feature, #Always returns the stacked clip text features
             'meta': meta_arr,
             'noun_vec': noun_vec,
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
             'aggregated_verb_vec': aggregated_verb_vec,
-            'CF_key':,
-            'CF_order'
+            'CF_key': text_feats[11:, :],
+            'CF_order': text_feats[1:11, :],
         }
 
     def _get_val_item(self, item):
