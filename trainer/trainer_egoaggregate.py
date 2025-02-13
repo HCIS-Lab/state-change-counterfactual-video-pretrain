@@ -170,13 +170,13 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
             v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
             
-
             if hierarchy == 'parent':
                 # text_embeds and video_embeds are the aggregated parent embeddings passed through self.aggregation
                 video_stacked_embeds, video_embeds = self.model(data, do_aggregation=True, batch_size=batch_size)
             else:
                 video_embeds, frame_embeds = self.model(data['video'])
             video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
+            frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
 
             # Special treatment when we want to aggregate features
             # This part of the code gets the child features based on the selected parent features
