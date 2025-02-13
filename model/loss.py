@@ -181,12 +181,15 @@ class InfoNCE(nn.Module):
     def forward_summary(self, summary_embeds, text_stacked_embeds, video_embeds, v_embeds, n_embeds, CF_key, CF_order):
         # compute loss1: aggregated text v.s summary text
         # compute loss2: aggregated video v.s summary text
-
         epsilon  = 1e-8
-        sim = F.cosine_similarity(video_embeds, text_embeds, dim=-1)
-        sim_exp = torch.exp(sim/self.temperature) + epsilon
-        summary_loss = -torch.log( sim_exp[0]) + torch.logsumexp(sim_exp[1:], dim=0, keepdim=False )
+        loss_dict = {}
+        sim_v2s = sim(video_embeds, summary_embeds, dim=-1)
+        sim_v2s_exp = torch.exp(sim_v2s/self.temperature) + epsilon
+        v2s_eye_mask = torch.eye(sim_v2s.shape[0]).cuda()
+        summary_loss = -torch.log(sim_v2s_exp[0]) + torch.logsumexp(sim_v2s_exp[1:], dim=0, keepdim=False )
 
+        loss_dict['t2s'] = loss_t2s
+        loss_dict['v2s'] = loss_v2s
         return summary_loss
 
 def sim(tensor1, tensor2):
