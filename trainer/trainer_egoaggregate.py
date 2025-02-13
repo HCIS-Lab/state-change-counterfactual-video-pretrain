@@ -146,12 +146,12 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             else:
                 text_embeds = [narration]
 
-        if hierarchy == 'parent':    
+        elif hierarchy == 'parent':    
             data['summary_feats'] = data['summary_feats'].to(self.device)
             # TODO
             # if cf:
             if 'aggregated_text' in data.keys():
-                data['aggregated_text'] = {key: val.to(self.device) for key, val in data['aggregated_text'].items()}
+                data['aggregated_text_feature'] = data['aggregated_text_feature'].to(self.device)
                 agg_n_embeds = data['aggregated_noun_vec'].to(self.device)
                 agg_v_embeds = data['aggregated_verb_vec'].to(self.device)
 
@@ -172,11 +172,13 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             
             if hierarchy == 'parent':
                 # text_embeds and video_embeds are the aggregated parent embeddings passed through self.aggregation
-                video_stacked_embeds, video_embeds = self.model(data['video'], do_aggregation=True, batch_size=batch_size)
+                video_stacked_embeds, video_embeds, text_embeds = self.model(data['video'], data['aggregated_text_feature'], do_aggregation=True, batch_size=batch_size)
+
             else:
                 video_embeds, frame_embeds = self.model(data['video'])
+                frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
             video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
-            frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
+            
 
             # Special treatment when we want to aggregate features
             # This part of the code gets the child features based on the selected parent features
@@ -224,7 +226,8 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                     v_clip_embeds = agg_v_embeds[:, pos_indices, :]
             
             if hierarchy == 'parent':
-                summary_embeds = self.allgather(summary_embeds, self.n_gpu, self.args)
+                text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
+                summary_embeds = self.allgather(data['summary_feats'], self.n_gpu, self.args)
             
 
             if hierarchy == 'parent' and self.do_hierarchical:
@@ -255,7 +258,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                     total_inter_loss = None
 
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
-                clip_loss = self.loss(text_embeds, video_embeds, v_embeds, n_embeds) #output1 is text and summary
+                clip_loss = self.loss.forward_summary(summary_embeds, text_embeds, video_embeds, v_embeds, n_embeds) #output1 is text and summary
             else:
                 loss_dict, clip_loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 

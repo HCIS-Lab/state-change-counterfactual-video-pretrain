@@ -203,9 +203,9 @@ class EgoAggregation(TextVideoDataset):
         filename =  "".join(x for x in narration if x.isalnum())
         if filename[0].isnumeric():
             filename = '_' + filename
-        
         embed_dir = "language_features/summary_embeddings_FLAVA"
         symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
+        # symlink_dir = "/N/project/ego4d_vlm/language_extraction/"
         
         temp = os.path.join(embed_dir, filename)[:245] + '.npy'
         features_path = os.path.join(symlink_dir, temp)
@@ -226,12 +226,12 @@ class EgoAggregation(TextVideoDataset):
         # Text aggregation
         try:
             aggregated_caption_temp, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
-            aggregated_caption = self._get_agg_state_feats(aggregated_caption_temp)
+            aggregated_caption_feature = self._get_agg_state_feats(aggregated_caption_temp)
         except Exception as e:
             #print('Error in text aggregation: {}. Text length: {}'.format(e, len(self.summarry_narration_hierarchy[sample['clip_text']]["clip_text"])))
             print('Error in text aggregation: {}.'.format(e))
             aggregated_caption_temp, aggregated_noun_vec, aggregated_verb_vec = self._get_caption(sample)
-            aggregated_caption = self._get_state_features(aggregated_caption_temp)
+            aggregated_caption_feature = self._get_state_features(aggregated_caption_temp)
 
         #final = final.unsqueeze(0)
 
@@ -243,13 +243,15 @@ class EgoAggregation(TextVideoDataset):
         meta_arr = {'raw_captions': caption, 'paths': None, 'dataset': self.dataset_name}
         return {
             'video': final,
-            'text': text_feats, #Always returns the summary text features
-            'aggregated_text': aggregated_caption, #Always returns the stacked clip text features
+            'summary_feats': text_feats, #Always returns the summary text features
+            'aggregated_text_feature': aggregated_caption_feature, #Always returns the stacked clip text features
             'meta': meta_arr,
             'noun_vec': noun_vec,
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
             'aggregated_verb_vec': aggregated_verb_vec,
+            'CF_key':,
+            'CF_order'
         }
 
     def _get_val_item(self, item):

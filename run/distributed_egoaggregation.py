@@ -159,9 +159,6 @@ def main():
     ex.add_config(config._config)
     ##########################
 
-
-    #args = parser.parse_args()
-
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -348,7 +345,7 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
                       lr_scheduler=lr_scheduler,
                       visualizer=visualizer,
                       writer=writer,
-                      # tokenizer=tokenizer,
+                      tokenizer=tokenizer,
                       max_samples_per_epoch=config['trainer']['max_samples_per_epoch'],
                       additional_losses=additional_losses,
                       start_epoch=config['trainer']['start_epoch'])

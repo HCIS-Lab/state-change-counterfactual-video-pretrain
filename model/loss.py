@@ -178,7 +178,10 @@ class InfoNCE(nn.Module):
         loss = loss_align + tcn
         return loss_dict, loss
     
-    def forward_summary(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
+    def forward_summary(self, summary_embeds, text_stacked_embeds, video_embeds, v_embeds, n_embeds, CF_key, CF_order):
+        # compute loss1: aggregated text v.s summary text
+        # compute loss2: aggregated video v.s summary text
+
         epsilon  = 1e-8
         sim = F.cosine_similarity(video_embeds, text_embeds, dim=-1)
         sim_exp = torch.exp(sim/self.temperature) + epsilon
