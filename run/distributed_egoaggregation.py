@@ -54,7 +54,7 @@ def init_dataloaders(config, module_data, data_loader_type="data_loader"): #data
         data_loader = [config.initialize(data_loader_type, module_data)]
         config[data_loader_type]['args'] = replace_nested_dict_item(config[data_loader_type]['args'], 'split', 'val')
         config[data_loader_type]['args'] = replace_nested_dict_item(config[data_loader_type]['args'], 'batch_size', 1)
-        # valid_data_loader = [config.initialize(data_loader_type, module_data)]
+        valid_data_loader = [config.initialize(data_loader_type, module_data)]
     elif isinstance(config[data_loader_type], list):
         data_loader = [config.initialize(data_loader_type, module_data, index=idx) for idx in
                        range(len(config[data_loader_type]))]
@@ -64,13 +64,13 @@ def init_dataloaders(config, module_data, data_loader_type="data_loader"): #data
             dl_cfg['args'] = replace_nested_dict_item(dl_cfg['args'], 'batch_size', 1)
             new_cfg_li.append(dl_cfg)
         config._config[data_loader_type] = new_cfg_li
-        # valid_data_loader = [config.initialize(data_loader_type, module_data, index=idx) for idx in
-        #                      range(len(config[data_loader_type]))]
+        valid_data_loader = [config.initialize(data_loader_type, module_data, index=idx) for idx in
+                             range(len(config[data_loader_type]))]
     else:
         raise ValueError("Check data_loader config, not correct format.")
 
-    # return data_loader, valid_data_loader
-    return data_loader
+    return data_loader, valid_data_loader
+    # return data_loader
 
 
 def find_free_port():
@@ -264,10 +264,10 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
     print('ARGS.RANK NOW IS {}'.format(args.rank))
     print('CONFIG NOW IS {}'.format(config))
     config.args = args
-    # data_loader, valid_data_loader = init_dataloaders(config, module_data)
-    # agg_data_loader, agg_valid_data_loader = init_dataloaders(config, module_data, data_loader_type="aggregate_data_loader")
-    data_loader = init_dataloaders(config, module_data)
-    agg_data_loader = init_dataloaders(config, module_data, data_loader_type="aggregate_data_loader")
+    data_loader, valid_data_loader = init_dataloaders(config, module_data)
+    agg_data_loader, agg_valid_data_loader = init_dataloaders(config, module_data, data_loader_type="aggregate_data_loader")
+    # data_loader = init_dataloaders(config, module_data)
+    # agg_data_loader = init_dataloaders(config, module_data, data_loader_type="aggregate_data_loader")
     if args.rank == 0:
         print('Train dataset: ', [x.n_samples for x in data_loader], ' samples')
         # print('Val dataset: ', [x.n_samples for x in valid_data_loader], ' samples')
@@ -342,9 +342,9 @@ def main_worker(gpu, ngpus_per_node, args, config): #TODO: Take config as input
     trainer = Multi_Trainer_dist_EgoAgg(args, model, loss, metrics, optimizer,
                       config=config,
                       data_loader=data_loader,
-                      # valid_data_loader=valid_data_loader,
+                      valid_data_loader=valid_data_loader,
                       agg_data_loader=agg_data_loader,
-                      # agg_valid_data_loader=agg_valid_data_loader,
+                      agg_valid_data_loader=agg_valid_data_loader,
                       lr_scheduler=lr_scheduler,
                       visualizer=visualizer,
                       writer=writer,

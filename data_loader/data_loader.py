@@ -13,6 +13,7 @@ from torch.utils.data.dataloader import default_collate
 from base import BaseDataLoaderExplicitSplit, BaseMultiDataLoader, \
     DistBaseDataLoaderExplicitSplit, MultiDistBaseDataLoaderExplicitSplit
 from data_loader.EgoClip_CF import EgoClip_CF
+from data_loader.EgoAggregation_dataset import EgoAggregation
 
 from data_loader.transforms import init_transform_dict, init_video_transform_dict
 

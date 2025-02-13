@@ -32,7 +32,7 @@ class EgoAggregation(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',on_bad_lines='skip')
             self.frame_sample = 'rand'
 
             load_all_once = True # load all summary hierarchy at once, maybe high on CPU usage, set to False for dynamic loading
@@ -176,15 +176,36 @@ class EgoAggregation(TextVideoDataset):
         return torch.stack(final_frames)
         #print('Overall : {}'.format(final.shape))
 
+    @staticmethod
+    def _parse_summary(narration):
+        assert type(narration) == str
+        
+        clean_filename =  "".join(x for x in narration if x.isalnum())
+        if clean_filename[0].isnumeric():
+            clean_filename = '_' + clean_filename
+
+        return clean_filename + '.npy'
+        
+    def _get_summary_cf_feature(self, caption):
+        
+        embedding_dir = "language_features/summary_symlinks_v2" # make this a self.embedding_dir on init function
+
+        features_path = os.path.join(embedding_dir, self._parse_summary(caption))
+        features = np.load(features_path, allow_pickle=True)
+        features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
+
+        # return [21, embed_dim]
+        # index 0 is summary feature, the other 20 entries are 10 order CF and 10 key CF features (in that order)
+        return features[0, :, :]
+
     def _get_train_item(self, item):
         item = item % len(self.metadata)
         sample = self.metadata.iloc[item]
         final = self._get_stacked_frames(sample)
-        #video_fp, video_sec, bound_sec = self._get_video_path(sample)
-        #final = self._get_video_frames(video_fp, video_sec, bound_sec)
 
         # Summary Text
         caption, noun_vec, verb_vec = self._get_caption(sample)
+        order_cf, key_cf = self._get_summary_cf_feature(caption)
         # Text aggregation
         try:
             aggregated_caption, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
