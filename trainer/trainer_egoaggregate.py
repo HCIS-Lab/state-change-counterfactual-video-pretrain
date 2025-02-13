@@ -172,7 +172,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             
             if hierarchy == 'parent':
                 # text_embeds and video_embeds are the aggregated parent embeddings passed through self.aggregation
-                video_stacked_embeds, video_embeds = self.model(data, do_aggregation=True, batch_size=batch_size)
+                video_stacked_embeds, video_embeds = self.model(data['video'], do_aggregation=True, batch_size=batch_size)
             else:
                 video_embeds, frame_embeds = self.model(data['video'])
             video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
@@ -257,7 +257,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
                 clip_loss = self.loss(text_embeds, video_embeds, v_embeds, n_embeds) #output1 is text and summary
             else:
-                loss_dict, loss = self.loss(text_embeds, video_embeds, \
+                loss_dict, clip_loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
                                                 frame_embeds)
 
