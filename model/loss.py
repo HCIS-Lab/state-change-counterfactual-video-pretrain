@@ -178,7 +178,7 @@ class InfoNCE(nn.Module):
         loss = loss_align + tcn
         return loss_dict, loss
     
-    def forward_summary(self, summary_embeds, video_embeds):
+    def forward_summary(self, summary_embeds, video_embeds, v_embeds, n_embeds):
         # compute loss1: aggregated text v.s summary text
         # compute loss2: aggregated video v.s summary text
 
