@@ -17,6 +17,7 @@ from data_loader.transforms import init_transform_dict, init_video_transform_dic
 import torch
 from PIL import Image
 from torchvision import transforms
+import numpy as np
 
 class EgoAggregation(TextVideoDataset):
     def _load_metadata(self):
@@ -175,28 +176,23 @@ class EgoAggregation(TextVideoDataset):
             final_frames.append(frames_clip)
         return torch.stack(final_frames)
         #print('Overall : {}'.format(final.shape))
-
-    @staticmethod
-    def _parse_summary(narration):
-        assert type(narration) == str
         
-        clean_filename =  "".join(x for x in narration if x.isalnum())
-        if clean_filename[0].isnumeric():
-            clean_filename = '_' + clean_filename
+    def _get_state_features(self, narration):
 
-        return clean_filename + '.npy'
+        filename =  "".join(x for x in narration if x.isalnum())
+        if filename[0].isnumeric():
+            filename = '_' + filename
         
-    def _get_summary_cf_feature(self, caption):
+        embed_dir = "language_features/summary_embeddings_FLAVA"
+        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
         
-        embedding_dir = "language_features/summary_symlinks_v2" # make this a self.embedding_dir on init function
-
-        features_path = os.path.join(embedding_dir, self._parse_summary(caption))
+        temp = os.path.join(embed_dir, filename)[:245] + '.npy'
+        features_path = os.path.join(symlink_dir, temp)
         features = np.load(features_path, allow_pickle=True)
-        features = torch.from_numpy(features).to(device=self.device) # note this disables gradients in some (maybe all) versions of pytorch
+        features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
 
-        # return [21, embed_dim]
-        # index 0 is summary feature, the other 20 entries are 10 order CF and 10 key CF features (in that order)
-        return features[0, :, :]
+        # return narration, 10 order CFs, 10 key CFs
+        return features[:, 0, :]
 
     def _get_train_item(self, item):
         item = item % len(self.metadata)
@@ -205,7 +201,7 @@ class EgoAggregation(TextVideoDataset):
 
         # Summary Text
         caption, noun_vec, verb_vec = self._get_caption(sample)
-        order_cf, key_cf = self._get_summary_cf_feature(caption)
+        text_feats = self._get_state_features(caption)
         # Text aggregation
         try:
             aggregated_caption, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
@@ -230,7 +226,8 @@ class EgoAggregation(TextVideoDataset):
             'noun_vec': noun_vec,
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
-            'aggregated_verb_vec': aggregated_verb_vec
+            'aggregated_verb_vec': aggregated_verb_vec,
+            'summary_feats': text_feats,
         }
 
     def _get_val_item(self, item):

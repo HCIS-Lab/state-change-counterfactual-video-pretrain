@@ -185,9 +185,10 @@ class EgoAggregation(TextVideoDataset):
         
         embed_dir = "language_features/summary_embeddings_FLAVA"
         symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
-
-        features_path = os.path.join(symlink_dir, embed_dir, filename)
-        features = np.load(features_path[:245] + '.npy', allow_pickle=True)
+        
+        temp = os.path.join(embed_dir, filename)[:245] + '.npy'
+        features_path = os.path.join(symlink_dir, temp)
+        features = np.load(features_path, allow_pickle=True)
         features = torch.from_numpy(features) # note this disables gradients in some (maybe all) versions of pytorch
 
         # return narration, 10 order CFs, 10 key CFs
