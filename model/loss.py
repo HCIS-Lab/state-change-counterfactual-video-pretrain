@@ -74,6 +74,7 @@ class InfoNCE(nn.Module):
         
         if do_tcn:
             narration, before, after, CF1, CF2, CF3 = text_embeds
+            narration = narration[0] # TODO check why this is a tuple
             before.requires_grad = False
             after.requires_grad = False
             CF1.requires_grad = False
@@ -188,14 +189,37 @@ class InfoNCE(nn.Module):
         loss_dict['tcn'] = tcn.item()
 
         loss = loss_align + tcn
-        return loss_dict, loss
+
+        return loss_dict, loss, x, mask_bool
+    
+    
+    def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
+        epsilon = 1e-8
+        sim_cf = F.cosine_similarity(video_embeds, text_embeds.permute(1,0,2)) # [10, 8, 8]
+        CF1, CF2, CF3, CF4, CF5, CF6, CF7, CF8, CF9, CF10 = sim_cf.chunk(10, dim=0)
+
+        denom_tcn_0 = epsilon + torch.exp(CF1/self.temperature) + torch.exp(CF2/self.temperature) + \
+                torch.exp(CF3/self.temperature) + torch.exp(CF4/self.temperature) + \
+                torch.exp(CF5/self.temperature) + torch.exp(CF6/self.temperature) + torch.exp(CF7/self.temperature) + \
+                torch.exp(CF8/self.temperature) + torch.exp(CF9/self.temperature) + torch.exp(CF10/self.temperature)
+        #+ \
+                #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
+            
+        denom_tcn_0 = denom_tcn_0.sum(-1)
+            
+        tcn_0 = -torch.log( torch.sum( ( (torch.exp(summ_align/self.temperature) + epsilon) / denom_tcn_0 ) * mask, dim=-1 ) ) 
+            
+        tcn = tcn_0.mean()
+
+        return tcn
+        
     
     def forward_summary(self, summary_embeds, video_embeds, cf_key, cf_order, v_embeds, n_embeds):
 
         alpha = .2
         beta = .2
         gamma = 1. - alpha - beta
-        _, loss_align = self.forward(
+        _, loss_align, x, mask_bool = self.forward(
                         text_embeds=summary_embeds, 
                         video_embeds=video_embeds,
                         v_embeds=v_embeds,
@@ -204,21 +228,17 @@ class InfoNCE(nn.Module):
                         do_tcn=False
                         )
         
-        _, loss_cf_key = self.forward(
+        loss_cf_key = self.forward_cf(
                         text_embeds=cf_key, 
                         video_embeds=video_embeds,
-                        v_embeds=v_embeds,
-                        n_embeds=n_embeds,
-                        frame_embeds=None,
-                        do_tcn=False
+                        summ_align=x,
+                        mask=mask_bool,
                         )
-        _, loss_cf_order = self.forward(
+        loss_cf_order = self.forward_cf(
                         text_embeds=cf_order, 
                         video_embeds=video_embeds,
-                        v_embeds=v_embeds,
-                        n_embeds=n_embeds,
-                        frame_embeds=None,
-                        do_tcn=False
+                        summ_align=x,
+                        mask=mask_bool,
                         )
 
 
@@ -245,6 +265,7 @@ def sim_matrix(a, b, eps=1e-8):
     # a_n, b_n = a.norm(dim=1)[:, None], b.norm(dim=1)[:, None]
     a_norm = F.normalize(a, dim=-1) #a / torch.max(a_n, eps * torch.ones_like(a_n))
     b_norm = F.normalize(b, dim=-1) #b / torch.max(b_n, eps * torch.ones_like(b_n))
+
     sim_mt = torch.mm(a_norm, b_norm.T)
     return sim_mt
 

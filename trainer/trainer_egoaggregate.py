@@ -275,7 +275,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
                 loss = self.loss.forward_summary(text_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
             else:
-                loss_dict, loss = self.loss(text_embeds, video_embeds, \
+                loss_dict, loss, _, _ = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
                                                 frame_embeds=frame_embeds, do_tcn=True)
 
