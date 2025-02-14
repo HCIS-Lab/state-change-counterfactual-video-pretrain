@@ -154,7 +154,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             # TODO
             # if cf:
             if 'aggregated_text_feature' in data.keys():
-                data['aggregated_text_feature'] = data['aggregated_text_feature'].to(self.device)
+                # data['aggregated_text_feature'] = data['aggregated_text_feature'].to(self.device)
                 agg_n_embeds = data['aggregated_noun_vec'].to(self.device)
                 agg_v_embeds = data['aggregated_verb_vec'].to(self.device)
             data['summary_feats'] = data['summary_feats'].to(self.device)
