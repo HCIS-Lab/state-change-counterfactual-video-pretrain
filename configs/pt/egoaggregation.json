@@ -2,7 +2,7 @@
     "name": "EgoClip_4f",
     "n_gpu": 8,
     "arch": {
-        "type": "FrozenInTime",
+        "type": "CF",
         "args": {
             "video_params": {
                 "model": "SpaceTimeTransformer",
@@ -35,7 +35,7 @@
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 16,
-                        "batch_size": 20,
+                        "batch_size": 21,
                         "split": "train",
                         "subsample": "mcq",
                         "text_params": {
@@ -46,7 +46,7 @@
                             "num_frames": 4,
                             "loading": "lax"
                         },
-                        "neg_param": false
+                        "neg_param": true
                     }
                 }
             ],
@@ -56,8 +56,8 @@
                     "type": "MultiDistTextVideoDataLoader",
                     "args":{
                         "dataset_name": "EgoAggregation",
-                        "data_dir": "absolute/path/to/ego4d_chunked/",
-                        "meta_dir": "absolute/path/to/dataset/",
+                        "data_dir": "/nfs/wattrel/data/md0/datasets/state_aware/ego4d_chunked/",
+                        "meta_dir": "/nfs/wattrel/data/md0/datasets/state_aware/",
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 16,
@@ -84,7 +84,7 @@
         }
     },
     "loss": {
-        "type": "EgoNCE",
+        "type": "InfoNCE",
         "args": {
         }
     },

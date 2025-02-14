@@ -226,12 +226,12 @@ class EgoAggregation(TextVideoDataset):
         # Text aggregation
         try:
             aggregated_caption_temp, aggregated_noun_vec, aggregated_verb_vec = self._get_stacked_caption(sample, index=item)
-            aggregated_caption_feature = self._get_agg_state_feats(aggregated_caption_temp)
+            # aggregated_caption_feature = self._get_agg_state_feats(aggregated_caption_temp)
         except Exception as e:
             #print('Error in text aggregation: {}. Text length: {}'.format(e, len(self.summarry_narration_hierarchy[sample['clip_text']]["clip_text"])))
             print('Error in text aggregation: {}.'.format(e))
             aggregated_caption_temp, aggregated_noun_vec, aggregated_verb_vec = self._get_caption(sample)
-            aggregated_caption_feature = self._get_state_features(aggregated_caption_temp)
+            # aggregated_caption_feature = self._get_state_features(aggregated_caption_temp)
 
         #final = final.unsqueeze(0)
 
@@ -244,7 +244,7 @@ class EgoAggregation(TextVideoDataset):
         return {
             'video': final,
             'summary_feats': text_feats[0, :], #Always returns the summary text features
-            'aggregated_text_feature': aggregated_caption_feature, #Always returns the stacked clip text features
+            'aggregated_text_feature': aggregated_caption_temp, #Always returns the stacked clip text features
             'meta': meta_arr,
             'noun_vec': noun_vec,
             'verb_vec': verb_vec,

@@ -253,7 +253,7 @@ class Multi_BaseTrainer_dist:
         self.args = args
         # setup GPU device if available, move model into configured device
         self.device, device_ids = self._prepare_device(config['n_gpu'])
-        print("inherit")
+
         self.model = model.to(self.device)
         self.model.device = self.device
 

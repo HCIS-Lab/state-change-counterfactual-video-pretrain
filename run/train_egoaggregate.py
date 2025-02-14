@@ -20,7 +20,7 @@ import model.metric as module_metric
 import model.counterfactual as module_arch
 import utils.visualizer as module_vis
 from parse_config import ConfigParser
-from trainer.trainer_egoclip_cf import Multi_Trainer_CF
+from trainer import Multi_Trainer_dist_EgoAgg
 from utils.util import replace_nested_dict_item
 from tensorboardX import SummaryWriter
 import wandb

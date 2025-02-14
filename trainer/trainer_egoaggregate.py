@@ -134,15 +134,29 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             
             data['narration'] = data['narration'].to(self.device)
             data['narration'].requires_grad = False
+            
             with torch.no_grad():  # Avoid unnecessary gradient tracking
-                narration = self.allgather(data['narration'], self.n_gpu, self.args)
+                narration = self.allgather(data['narration'], self.n_gpu, self.args),
+            
 
             if state and not cf:
-                text_embeds = [narration, before, after]
+                text_embeds = [
+                    narration, 
+                    before, 
+                    after
+                    ]
             elif state and cf:
-                text_embeds = [narration, before, after, CF1, CF2, CF3]
+                text_embeds = [
+                    narration, 
+                    before, 
+                    after, 
+                    CF1, CF2, CF3
+                    ]
             elif not state and cf:
-                text_embeds = [narration, CF1, CF2, CF3]
+                text_embeds = [
+                    narration, 
+                    CF1, CF2, CF3
+                    ]
             else:
                 text_embeds = [narration]
 
