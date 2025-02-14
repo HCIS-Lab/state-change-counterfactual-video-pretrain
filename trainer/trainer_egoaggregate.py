@@ -153,7 +153,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 summary_cf = summary_cf.to(self.device)
             # TODO
             # if cf:
-            if 'aggregated_text' in data.keys():
+            if 'aggregated_text_feature' in data.keys():
                 data['aggregated_text_feature'] = data['aggregated_text_feature'].to(self.device)
                 agg_n_embeds = data['aggregated_noun_vec'].to(self.device)
                 agg_v_embeds = data['aggregated_verb_vec'].to(self.device)
@@ -199,7 +199,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
 
                 # video_embeds = torch.mean(video_embeds, dim=1) # Now handled in the forward function of the model. Can be safely removed
                 # For handling text aggregation
-                text_stacked_embeds = text_stacked_embeds.view(batch_size, -1, text_stacked_embeds.shape[1])
+                # text_stacked_embeds = text_stacked_embeds.view(batch_size, -1, text_stacked_embeds.shape[1])
 
                 agg_n_embeds = agg_n_embeds.view(batch_size, -1, agg_n_embeds.shape[1])
                 agg_v_embeds = agg_v_embeds.view(batch_size, -1, agg_v_embeds.shape[1])
