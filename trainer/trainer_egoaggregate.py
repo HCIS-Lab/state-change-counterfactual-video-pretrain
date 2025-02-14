@@ -16,6 +16,7 @@ import random
 from base import Multi_BaseTrainer_dist
 from model.counterfactual import sim_matrix
 from utils import inf_loop
+import wandb
 
 class AllGather_multi(torch.autograd.Function):
     """An autograd function that performs allgather on a tensor."""
@@ -272,8 +273,15 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 # else:
                 #     total_inter_loss = None
             only_sa_no_summary_baseline = False
+            # text_embeds = [x.contiguous() for x in text_embeds]
+            # video_embeds = video_embeds.contiguous()
+            # v_embeds = v_embeds.contiguous()
+            # n_embeds = n_embeds.contiguous()
+
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
-                loss = self.loss.forward_summary(text_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
+                key_cf = key_cf.permute(1,0,2).contiguous()
+                order_cf = order_cf.permute(1,0,2).contiguous()
+                loss_dict, loss = self.loss.forward_summary(text_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
             else:
                 loss_dict, loss, _, _ = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
@@ -291,7 +299,9 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             #     loss = clip_loss + total_intra_loss + total_inter_loss
             # else:
             #     raise ValueError
-
+        if self.args.rank == 0:
+            wandb.log(loss_dict)
+        loss = loss.contiguous()
         loss.backward()
         self.optimizer.step()
 

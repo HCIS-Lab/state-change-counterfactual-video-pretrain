@@ -74,7 +74,7 @@ class InfoNCE(nn.Module):
         
         if do_tcn:
             narration, before, after, CF1, CF2, CF3 = text_embeds
-            narration = narration[0] # TODO check why this is a tuple
+            narration = narration[0]  # TODO check why this is a tuple
             before.requires_grad = False
             after.requires_grad = False
             CF1.requires_grad = False
@@ -195,13 +195,14 @@ class InfoNCE(nn.Module):
     
     def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
         epsilon = 1e-8
-        sim_cf = F.cosine_similarity(video_embeds, text_embeds.permute(1,0,2)) # [10, 8, 8]
-        CF1, CF2, CF3, CF4, CF5, CF6, CF7, CF8, CF9, CF10 = sim_cf.chunk(10, dim=0)
+        sim_cf = F.cosine_similarity(video_embeds, text_embeds) # [10, 8, 8]
+        # CF1, CF2, CF3, CF4, CF5, CF6, CF7, CF8, CF9, CF10 = sim_cf.chunk(10, dim=0)
+        denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0)
 
-        denom_tcn_0 = epsilon + torch.exp(CF1/self.temperature) + torch.exp(CF2/self.temperature) + \
-                torch.exp(CF3/self.temperature) + torch.exp(CF4/self.temperature) + \
-                torch.exp(CF5/self.temperature) + torch.exp(CF6/self.temperature) + torch.exp(CF7/self.temperature) + \
-                torch.exp(CF8/self.temperature) + torch.exp(CF9/self.temperature) + torch.exp(CF10/self.temperature)
+        # denom_tcn_0 = epsilon + torch.exp(CF1/self.temperature) + torch.exp(CF2/self.temperature) + \
+        #         torch.exp(CF3/self.temperature) + torch.exp(CF4/self.temperature) + \
+        #         torch.exp(CF5/self.temperature) + torch.exp(CF6/self.temperature) + torch.exp(CF7/self.temperature) + \
+        #         torch.exp(CF8/self.temperature) + torch.exp(CF9/self.temperature) + torch.exp(CF10/self.temperature)
         #+ \
                 #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
             
@@ -216,8 +217,8 @@ class InfoNCE(nn.Module):
     
     def forward_summary(self, summary_embeds, video_embeds, cf_key, cf_order, v_embeds, n_embeds):
 
-        alpha = .2
-        beta = .2
+        alpha = .1
+        beta = .1
         gamma = 1. - alpha - beta
         _, loss_align, x, mask_bool = self.forward(
                         text_embeds=summary_embeds, 
@@ -241,14 +242,18 @@ class InfoNCE(nn.Module):
                         mask=mask_bool,
                         )
 
-
+        loss_dict = {
+            "parent_align": loss_align.item(),
+            "parent_cf_key": loss_cf_key.item(),
+            "parent_cf_order": loss_cf_order.item()
+        }
         summary_loss = gamma*loss_align + alpha*loss_cf_key + beta*loss_cf_order
 
         # sim = F.cosine_similarity(video_embeds, summary_embeds, dim=-1)
         # sim_exp = torch.exp(sim/self.temperature) + epsilon
         # summary_loss = -torch.log( sim_exp[0]) + torch.logsumexp(sim_exp[1:], dim=0, keepdim=False )
 
-        return summary_loss
+        return loss_dict, summary_loss
 
 def sim(tensor1, tensor2):
     cs = torch.nn.CosineSimilarity(1)
