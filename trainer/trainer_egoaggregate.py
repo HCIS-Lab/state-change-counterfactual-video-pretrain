@@ -149,8 +149,8 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
         elif hierarchy == 'parent':    
             
             if cf:
-                summary_cf = torch.cat((data['CF_key'], data['CF_order']), axis = 0)
-                summary_cf = summary_cf.to(self.device)
+                key_cf = data['CF_key'].to(self.device)
+                order_cf = data['CF_order'].to(self.device)
             # TODO
             # if cf:
             if 'aggregated_text_feature' in data.keys():
@@ -189,13 +189,13 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             # This has nothing to do with the aggregation strategy
             # However, latest discussion (July end) suggests parent-child matching is not good, only parent-parent and child-child makes sense.
             if hierarchy == 'parent' and self.do_hierarchical:
-                # For handling video aggregation
-                video_stacked_embeds = video_stacked_embeds.view(batch_size, -1, video_stacked_embeds.shape[1])
-                # Do video child feature sampling
-                num_positives = self.config['training_methods']['hierarchical']['num_positives']
-                assert video_stacked_embeds.shape[1] > num_positives
-                pos_indices = random.sample(range(video_stacked_embeds.shape[1]), num_positives)
-                video_clip_embeds = video_stacked_embeds[:, pos_indices, :]
+                # # For handling video aggregation
+                # video_stacked_embeds = video_stacked_embeds.view(batch_size, -1, video_stacked_embeds.shape[1])
+                # # Do video child feature sampling
+                # num_positives = self.config['training_methods']['hierarchical']['num_positives']
+                # assert video_stacked_embeds.shape[1] > num_positives
+                # pos_indices = random.sample(range(video_stacked_embeds.shape[1]), num_positives)
+                # video_clip_embeds = video_stacked_embeds[:, pos_indices, :]
 
                 # video_embeds = torch.mean(video_embeds, dim=1) # Now handled in the forward function of the model. Can be safely removed
                 # For handling text aggregation
@@ -205,82 +205,83 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 agg_v_embeds = agg_v_embeds.view(batch_size, -1, agg_v_embeds.shape[1])
                 # Do text child if text aggregation method is used. For summary, we need to invoke a call to model again
                 #if self.config['training_methods']['text aggregation']:
-                if True:
-                    num_positives = self.config['training_methods']['hierarchical']['num_positives']
-                    assert text_stacked_embeds.shape[1] > num_positives
-                    assert agg_n_embeds.shape[1] > num_positives
-                    assert agg_v_embeds.shape[1] > num_positives
-                    pos_indices = random.sample(range(text_stacked_embeds.shape[1]), num_positives)
-                    text_clip_embeds = text_stacked_embeds[:, pos_indices, :]
-                    n_clip_embeds = agg_n_embeds[:, pos_indices, :]
-                    v_clip_embeds = agg_v_embeds[:, pos_indices, :]
-                else:
-                    # We need to evaluate on the model again with text aggregation because the current text_embeds only has summary embeddings
-                    text_aggregated_embeds = self.model.module.compute_text(data['aggregated_text'])
-                    text_aggregated_embeds = text_aggregated_embeds.view(batch_size, -1, text_aggregated_embeds.shape[1])
-                    num_positives = self.config['training_methods']['hierarchical']['num_positives']
-                    assert text_aggregated_embeds.shape[1] > num_positives
-                    assert agg_n_embeds.shape[1] > num_positives
-                    assert agg_v_embeds.shape[1] > num_positives
-                    pos_indices = random.sample(range(text_aggregated_embeds.shape[1]), num_positives)
-                    text_clip_embeds = text_aggregated_embeds[:, pos_indices, :]
-                    agg_n_embeds = agg_n_embeds.view(batch_size, -1, agg_n_embeds.shape[1])
-                    agg_v_embeds = agg_v_embeds.view(batch_size, -1, agg_v_embeds.shape[1])
-                    n_clip_embeds = agg_n_embeds[:, pos_indices, :]
-                    v_clip_embeds = agg_v_embeds[:, pos_indices, :]
+                # if True:
+                #     num_positives = self.config['training_methods']['hierarchical']['num_positives']
+                #     assert text_stacked_embeds.shape[1] > num_positives
+                #     assert agg_n_embeds.shape[1] > num_positives
+                #     assert agg_v_embeds.shape[1] > num_positives
+                #     pos_indices = random.sample(range(text_stacked_embeds.shape[1]), num_positives)
+                #     text_clip_embeds = text_stacked_embeds[:, pos_indices, :]
+                #     n_clip_embeds = agg_n_embeds[:, pos_indices, :]
+                #     v_clip_embeds = agg_v_embeds[:, pos_indices, :]
+                # else:
+                #     # We need to evaluate on the model again with text aggregation because the current text_embeds only has summary embeddings
+                #     text_aggregated_embeds = self.model.module.compute_text(data['aggregated_text'])
+                #     text_aggregated_embeds = text_aggregated_embeds.view(batch_size, -1, text_aggregated_embeds.shape[1])
+                #     num_positives = self.config['training_methods']['hierarchical']['num_positives']
+                #     assert text_aggregated_embeds.shape[1] > num_positives
+                #     assert agg_n_embeds.shape[1] > num_positives
+                #     assert agg_v_embeds.shape[1] > num_positives
+                #     pos_indices = random.sample(range(text_aggregated_embeds.shape[1]), num_positives)
+                #     text_clip_embeds = text_aggregated_embeds[:, pos_indices, :]
+                #     agg_n_embeds = agg_n_embeds.view(batch_size, -1, agg_n_embeds.shape[1])
+                #     agg_v_embeds = agg_v_embeds.view(batch_size, -1, agg_v_embeds.shape[1])
+                #     n_clip_embeds = agg_n_embeds[:, pos_indices, :]
+                #     v_clip_embeds = agg_v_embeds[:, pos_indices, :]
             
             if hierarchy == 'parent':
                 # text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
                 text_embeds = self.allgather(data['summary_feats'], self.n_gpu, self.args)
                 if cf:
-                    summary_cf = self.allgather(summary_cf, self.n_gpu, self.args)
+                    key_cf = self.allgather(key_cf, self.n_gpu, self.args)
+                    order_cf = self.allgather(order_cf, self.n_gpu, self.args)
 
-            if hierarchy == 'parent' and self.do_hierarchical:
-                video_clip_embeds = self.allgather(video_clip_embeds, self.n_gpu, self.args)
-                video_clip_embeds = video_clip_embeds.view(-1, video_clip_embeds.shape[-1])
-                text_clip_embeds = self.allgather(text_clip_embeds, self.n_gpu, self.args)
-                text_clip_embeds = text_clip_embeds.view(-1, text_clip_embeds.shape[-1])
-                n_clip_embeds = self.allgather(n_clip_embeds, self.n_gpu, self.args)
-                n_clip_embeds = n_clip_embeds.view(-1, n_clip_embeds.shape[-1])
-                v_clip_embeds = self.allgather(v_clip_embeds, self.n_gpu, self.args)
-                v_clip_embeds = v_clip_embeds.view(-1, v_clip_embeds.shape[-1])
+            # if hierarchy == 'parent' and self.do_hierarchical:
+            #     video_clip_embeds = self.allgather(video_clip_embeds, self.n_gpu, self.args)
+            #     video_clip_embeds = video_clip_embeds.view(-1, video_clip_embeds.shape[-1])
+            #     text_clip_embeds = self.allgather(text_clip_embeds, self.n_gpu, self.args)
+            #     text_clip_embeds = text_clip_embeds.view(-1, text_clip_embeds.shape[-1])
+            #     n_clip_embeds = self.allgather(n_clip_embeds, self.n_gpu, self.args)
+            #     n_clip_embeds = n_clip_embeds.view(-1, n_clip_embeds.shape[-1])
+            #     v_clip_embeds = self.allgather(v_clip_embeds, self.n_gpu, self.args)
+            #     v_clip_embeds = v_clip_embeds.view(-1, v_clip_embeds.shape[-1])
 
                 assert video_embeds.shape[0] == text_embeds.shape[0]
                 num_positives_MILNCE = video_embeds.shape[0]
 
-                if False:#self.config['training_methods']['hierarchical']['intra-modal']:
-                    intra_video_loss = self.additional_losses[0](sim_matrix(video_embeds, video_clip_embeds), num_samples=num_positives_MILNCE)
-                    intra_text_loss = self.additional_losses[1](sim_matrix(text_embeds, text_clip_embeds), num_samples=num_positives_MILNCE)
-                    total_intra_loss = intra_video_loss + intra_text_loss
-                else:
-                    total_intra_loss = None
+                # if False:#self.config['training_methods']['hierarchical']['intra-modal']:
+                #     intra_video_loss = self.additional_losses[0](sim_matrix(video_embeds, video_clip_embeds), num_samples=num_positives_MILNCE)
+                #     intra_text_loss = self.additional_losses[1](sim_matrix(text_embeds, text_clip_embeds), num_samples=num_positives_MILNCE)
+                #     total_intra_loss = intra_video_loss + intra_text_loss
+                # else:
+                #     total_intra_loss = None
 
-                if False:#self.config['training_methods']['hierarchical']['inter-modal']:
-                    inter_parent_video_loss = self.additional_losses[2](sim_matrix(video_embeds, text_clip_embeds), num_samples=num_positives_MILNCE)
-                    inter_parent_text_loss = self.additional_losses[3](sim_matrix(video_clip_embeds, text_embeds), num_samples=num_positives_MILNCE)
-                    total_inter_loss = inter_parent_video_loss + inter_parent_text_loss
-                else:
-                    total_inter_loss = None
-
+                # if False:#self.config['training_methods']['hierarchical']['inter-modal']:
+                #     inter_parent_video_loss = self.additional_losses[2](sim_matrix(video_embeds, text_clip_embeds), num_samples=num_positives_MILNCE)
+                #     inter_parent_text_loss = self.additional_losses[3](sim_matrix(video_clip_embeds, text_embeds), num_samples=num_positives_MILNCE)
+                #     total_inter_loss = inter_parent_video_loss + inter_parent_text_loss
+                # else:
+                #     total_inter_loss = None
+            only_sa_no_summary_baseline = False
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
-                clip_loss = self.loss.forward_summary(summary_embeds, summary_cf, video_embeds, v_embeds, n_embeds) #output1 is text and summary
+                loss = self.loss.forward_summary(summary_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
             else:
-                loss_dict, clip_loss = self.loss(text_embeds, video_embeds, \
+                loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
                                                 frame_embeds)
 
-            intra_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_intra_loss is not None)
-            inter_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_inter_loss is not None)
-            if not intra_loss_exists and not inter_loss_exists:
-                loss = clip_loss
-            elif intra_loss_exists and not inter_loss_exists:
-                loss = clip_loss + total_intra_loss
-            elif not intra_loss_exists and inter_loss_exists:
-                loss = clip_loss + total_inter_loss
-            elif intra_loss_exists and inter_loss_exists:
-                loss = clip_loss + total_intra_loss + total_inter_loss
-            else:
-                raise ValueError
+            # intra_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_intra_loss is not None)
+            # inter_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_inter_loss is not None)
+            # if not intra_loss_exists and not inter_loss_exists:
+            #     loss = clip_loss
+            # elif intra_loss_exists and not inter_loss_exists:
+            #     loss = clip_loss + total_intra_loss
+            # elif not intra_loss_exists and inter_loss_exists:
+            #     loss = clip_loss + total_inter_loss
+            # elif intra_loss_exists and inter_loss_exists:
+            #     loss = clip_loss + total_intra_loss + total_inter_loss
+            # else:
+            #     raise ValueError
 
         loss.backward()
         self.optimizer.step()
