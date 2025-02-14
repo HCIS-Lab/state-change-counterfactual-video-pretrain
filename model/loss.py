@@ -195,7 +195,7 @@ class InfoNCE(nn.Module):
         alpha = .2
         beta = .2
         gamma = 1. - alpha - beta
-        loss_align = self.forward(
+        _, loss_align = self.forward(
                         text_embeds=summary_embeds, 
                         video_embeds=video_embeds,
                         v_embeds=v_embeds,
@@ -204,7 +204,7 @@ class InfoNCE(nn.Module):
                         do_tcn=False
                         )
         
-        loss_cf_key = self.forward(
+        _, loss_cf_key = self.forward(
                         text_embeds=cf_key, 
                         video_embeds=video_embeds,
                         v_embeds=v_embeds,
@@ -212,7 +212,7 @@ class InfoNCE(nn.Module):
                         frame_embeds=None,
                         do_tcn=False
                         )
-        loss_cf_order = self.forward(
+        _, loss_cf_order = self.forward(
                         text_embeds=cf_order, 
                         video_embeds=video_embeds,
                         v_embeds=v_embeds,
