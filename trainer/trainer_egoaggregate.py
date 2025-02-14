@@ -268,7 +268,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             else:
                 loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
-                                                frame_embeds)
+                                                frame_embeds=frame_embeds, do_tcn=True)
 
             # intra_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_intra_loss is not None)
             # inter_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_inter_loss is not None)
