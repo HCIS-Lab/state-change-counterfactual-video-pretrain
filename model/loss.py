@@ -86,7 +86,6 @@ class InfoNCE(nn.Module):
 
         # video_text_alignment
         assert video_embeds.requires_grad
-        assert frame_embeds.requires_grad
         # video-text only
         # EgoNCE
         x = sim_matrix(video_embeds, narration)
@@ -116,6 +115,7 @@ class InfoNCE(nn.Module):
         ## Number of negative video examples to use
         if do_tcn:
             assert frame_embeds is not None
+            assert frame_embeds.requires_grad
 
             bs, num_frame, _ = frame_embeds.shape
             frame_embeds = frame_embeds.reshape(bs, num_frame, -1)
