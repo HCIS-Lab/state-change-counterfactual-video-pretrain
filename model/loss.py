@@ -68,17 +68,21 @@ class InfoNCE(nn.Module):
         self.noun = noun
         self.verb = verb
 
-    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
+    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds=None, do_tcn=True):
         loss_dict = {}
         epsilon = 1e-8
-
-        narration, before, after, CF1, CF2, CF3 = text_embeds
+        
+        if do_tcn:
+            narration, before, after, CF1, CF2, CF3 = text_embeds
+            before.requires_grad = False
+            after.requires_grad = False
+            CF1.requires_grad = False
+            CF2.requires_grad = False
+            CF3.requires_grad = False
+        else:
+            narration = text_embeds
+        
         narration.requires_grad = False
-        before.requires_grad = False
-        after.requires_grad = False
-        CF1.requires_grad = False
-        CF2.requires_grad = False
-        CF3.requires_grad = False
 
         # video_text_alignment
         assert video_embeds.requires_grad
@@ -110,82 +114,119 @@ class InfoNCE(nn.Module):
 
         ## Within Video TCN Loss
         ## Number of negative video examples to use
-        bs, num_frame, _ = frame_embeds.shape
-        frame_embeds = frame_embeds.reshape(bs, num_frame, -1)
-        f0 = frame_embeds[:, 0]
-        f1 = frame_embeds[:, 1]
-        f2 = frame_embeds[:, 2]
-        f3 = frame_embeds[:, 3]
+        if do_tcn:
+            assert frame_embeds is not None
 
-        sim_0_1 = sim_matrix(f0, f1)
-        sim_0_3 = sim_matrix(f0, f3)
-        sim_0_before = sim_matrix(f0, before)
-        sim_0_after = sim_matrix(f0, after)
-        sim_0_cf1 = sim_matrix(f0, CF1)
-        sim_0_cf2 = sim_matrix(f0, CF2)
-        sim_0_cf3 = sim_matrix(f0, CF3)
+            bs, num_frame, _ = frame_embeds.shape
+            frame_embeds = frame_embeds.reshape(bs, num_frame, -1)
+            f0 = frame_embeds[:, 0]
+            f1 = frame_embeds[:, 1]
+            f2 = frame_embeds[:, 2]
+            f3 = frame_embeds[:, 3]
 
-        sim_3_0 = sim_matrix(f3, f0) 
-        sim_3_2 = sim_matrix(f3, f2)
-        sim_3_after = sim_matrix(f3, after)
-        sim_3_before = sim_matrix(f3, before)
-        sim_3_cf1 = sim_matrix(f3, CF1)
-        sim_3_cf2 = sim_matrix(f3, CF2)
-        sim_3_cf3 = sim_matrix(f3, CF3)
+            sim_0_1 = sim_matrix(f0, f1)
+            sim_0_3 = sim_matrix(f0, f3)
+            sim_0_before = sim_matrix(f0, before)
+            sim_0_after = sim_matrix(f0, after)
+            sim_0_cf1 = sim_matrix(f0, CF1)
+            sim_0_cf2 = sim_matrix(f0, CF2)
+            sim_0_cf3 = sim_matrix(f0, CF3)
 
-        eye_mask = torch.eye(sim_0_1.shape[0]).cuda()
+            sim_3_0 = sim_matrix(f3, f0) 
+            sim_3_2 = sim_matrix(f3, f2)
+            sim_3_after = sim_matrix(f3, after)
+            sim_3_before = sim_matrix(f3, before)
+            sim_3_cf1 = sim_matrix(f3, CF1)
+            sim_3_cf2 = sim_matrix(f3, CF2)
+            sim_3_cf3 = sim_matrix(f3, CF3)
 
         # For the specified number of negatives from other videos
         # Add it as a negative
 
-        # TODO: check this
-        # neg0 = []
-        # neg3 = []
-        # for _ in range(self.num_neg):
-        #     f0_shuf = f0[torch.randperm(f0.size()[0])]
-        #     f3_shuf = f3[torch.randperm(f3.size()[0])]
-        #     neg0.append(sim(f0, f0_shuf))
-        #     neg3.append(sim(f3, f3_shuf))
-        # neg0 = torch.stack(neg0, -1)
-        # neg3 = torch.stack(neg3, -1)
-    
+            # TODO: check this
+            # neg0 = []
+            # neg3 = []
+            # for _ in range(self.num_neg):
+            #     f0_shuf = f0[torch.randperm(f0.size()[0])]
+            #     f3_shuf = f3[torch.randperm(f3.size()[0])]
+            #     neg0.append(sim(f0, f0_shuf))
+            #     neg3.append(sim(f3, f3_shuf))
+            # neg0 = torch.stack(neg0, -1)
+            # neg3 = torch.stack(neg3, -1)
+        
 
-        denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
-              torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
-              torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) #+ \
-            #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
+            # TODO just separate softmax for cf before and after
+            #
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
+                torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) #+ \
+                #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
 
-        denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
-                torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
-                torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
-                # (torch.exp(neg3) / self.num_neg).sum(-1)
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
+                    torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
+                    # (torch.exp(neg3) / self.num_neg).sum(-1)
+            
+            denom_tcn_0 = denom_tcn_0.sum(-1)
+            denom_tcn_3 = denom_tcn_3.sum(-1)
+            
+            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+            
+            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
+            
+            tcn_0 /= 2
+            tcn_3 /= 2
+            
+            tcn = .2*((tcn_3 + tcn_0) / 2.0).mean()
         
-        denom_tcn_0 = denom_tcn_0.sum(-1)
-        denom_tcn_3 = denom_tcn_3.sum(-1)
-        
-        tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * eye_mask, dim=-1 ) ) - \
-                 torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * eye_mask, dim=-1 ) )
-        
-        tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * eye_mask, dim=-1 ) ) - \
-                 torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * eye_mask, dim=-1 ) )
-        
-        tcn_0 /= 2
-        tcn_3 /= 2
-        
-        tcn = .2*((tcn_3 + tcn_0) / 2.0).mean()
+        else: 
+            assert frame_embeds is None
+            tcn = torch.tensor([0]).cuda()
+
         loss_dict['tcn'] = tcn.item()
 
         loss = loss_align + tcn
         return loss_dict, loss
     
-    def forward_summary(self, summary_embeds, video_embeds, v_embeds, n_embeds):
-        # compute loss1: aggregated text v.s summary text
-        # compute loss2: aggregated video v.s summary text
+    def forward_summary(self, summary_embeds, video_embeds, cf_key, cf_order, v_embeds, n_embeds):
 
-        epsilon  = 1e-8
-        sim = F.cosine_similarity(video_embeds, summary_embeds, dim=-1)
-        sim_exp = torch.exp(sim/self.temperature) + epsilon
-        summary_loss = -torch.log( sim_exp[0]) + torch.logsumexp(sim_exp[1:], dim=0, keepdim=False )
+        alpha = .2
+        beta = .2
+        gamma = 1. - alpha - beta
+        loss_align = self.forward(
+                        text_embeds=summary_embeds, 
+                        video_embeds=video_embeds,
+                        v_embeds=v_embeds,
+                        n_embeds=n_embeds,
+                        frame_embeds=None,
+                        do_tcn=False
+                        )
+        
+        loss_cf_key = self.forward(
+                        text_embeds=cf_key, 
+                        video_embeds=video_embeds,
+                        v_embeds=v_embeds,
+                        n_embeds=n_embeds,
+                        frame_embeds=None,
+                        do_tcn=False
+                        )
+        loss_cf_order = self.forward(
+                        text_embeds=cf_order, 
+                        video_embeds=video_embeds,
+                        v_embeds=v_embeds,
+                        n_embeds=n_embeds,
+                        frame_embeds=None,
+                        do_tcn=False
+                        )
+
+
+        summary_loss = gamma*loss_align + alpha*loss_cf_key + beta*loss_cf_order
+
+        # sim = F.cosine_similarity(video_embeds, summary_embeds, dim=-1)
+        # sim_exp = torch.exp(sim/self.temperature) + epsilon
+        # summary_loss = -torch.log( sim_exp[0]) + torch.logsumexp(sim_exp[1:], dim=0, keepdim=False )
 
         return summary_loss
 
