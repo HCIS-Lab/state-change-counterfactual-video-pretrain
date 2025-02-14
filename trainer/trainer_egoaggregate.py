@@ -151,17 +151,18 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             if cf:
                 key_cf = data['CF_key'].to(self.device)
                 order_cf = data['CF_order'].to(self.device)
-            # TODO
-            # if cf:
+                key_cf = self.allgather(key_cf, self.n_gpu, self.args)
+                order_cf = self.allgather(order_cf, self.n_gpu, self.args)
+
             if 'aggregated_text_feature' in data.keys():
                 # data['aggregated_text_feature'] = data['aggregated_text_feature'].to(self.device)
                 agg_n_embeds = data['aggregated_noun_vec'].to(self.device)
                 agg_v_embeds = data['aggregated_verb_vec'].to(self.device)
             data['summary_feats'] = data['summary_feats'].to(self.device)
-
+            text_embeds = self.allgather(data['summary_feats'], self.n_gpu, self.args)
         data['video'] = data['video'].to(self.device)
         n_embeds = data['noun_vec'].to(self.device)
-        v_embeds = data['verb_vec'].to(self.device)
+        v_embeds = data['verb_vec'].to(self.device)                    
 
         self.optimizer.zero_grad()
         with torch.set_grad_enabled(True):
@@ -229,12 +230,6 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 #     n_clip_embeds = agg_n_embeds[:, pos_indices, :]
                 #     v_clip_embeds = agg_v_embeds[:, pos_indices, :]
             
-            if hierarchy == 'parent':
-                # text_embeds = self.allgather(text_embeds, self.n_gpu, self.args)
-                text_embeds = self.allgather(data['summary_feats'], self.n_gpu, self.args)
-                if cf:
-                    key_cf = self.allgather(key_cf, self.n_gpu, self.args)
-                    order_cf = self.allgather(order_cf, self.n_gpu, self.args)
 
             # if hierarchy == 'parent' and self.do_hierarchical:
             #     video_clip_embeds = self.allgather(video_clip_embeds, self.n_gpu, self.args)
@@ -264,7 +259,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 #     total_inter_loss = None
             only_sa_no_summary_baseline = False
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
-                loss = self.loss.forward_summary(summary_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
+                loss = self.loss.forward_summary(text_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
             else:
                 loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
