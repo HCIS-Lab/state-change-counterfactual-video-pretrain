@@ -10,19 +10,24 @@ import argparse
 import collections
 import transformers
 from sacred import Experiment
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 import data_loader.data_loader as module_data
 import model.loss as module_loss
 import model.metric as module_metric
-import model.model as module_arch
+import model.counterfactual as module_arch
 import utils.visualizer as module_vis
 from parse_config import ConfigParser
-from trainer import Multi_Trainer_dist_EgoAgg
+from trainer.trainer_egoclip_cf import Multi_Trainer_CF
 from utils.util import replace_nested_dict_item
 from tensorboardX import SummaryWriter
+import wandb
 
 ex = Experiment('train')
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
 
 @ex.main
 def run(config, args):

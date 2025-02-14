@@ -37,7 +37,7 @@ class EgoClip_CF(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', on_bad_lines='skip')
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t', error_bad_lines=False)
             self.frame_sample = 'rand'
             # with open('/N/project/ego4d_vlm/narration/states.json', "r") as json_file:
             #     self.state_metadata = json.load(json_file)
