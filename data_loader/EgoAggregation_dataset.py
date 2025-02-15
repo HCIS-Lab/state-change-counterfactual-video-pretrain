@@ -34,7 +34,11 @@ class EgoAggregation(TextVideoDataset):
 
         if self.split == 'train':
             self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
+            # self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',on_bad_lines='skip')
             self.frame_sample = 'rand'
+            with open(os.path.join(self.meta_dir, 'updated_summary_cf.json'), "r") as json_file:
+                self.cf_metadata = json.load(json_file)
+            self.metadata = self.metadata[self.metadata['clip_text'].isin(self.cf_metadata.keys())].reset_index(drop=True)
 
             load_all_once = True # load all summary hierarchy at once, maybe high on CPU usage, set to False for dynamic loading
             if load_all_once:
