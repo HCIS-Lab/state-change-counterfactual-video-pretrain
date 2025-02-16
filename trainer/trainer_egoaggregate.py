@@ -139,27 +139,26 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             with torch.no_grad():  # Avoid unnecessary gradient tracking
                 narration = self.allgather(data['narration'], self.n_gpu, self.args),
             
-
-            if state and not cf:
-                text_embeds = [
-                    narration, 
-                    before, 
-                    after
-                    ]
-            elif state and cf:
-                text_embeds = [
-                    narration, 
-                    before, 
-                    after, 
-                    CF1, CF2, CF3
-                    ]
-            elif not state and cf:
-                text_embeds = [
-                    narration, 
-                    CF1, CF2, CF3
-                    ]
-            else:
-                text_embeds = [narration]
+                if state and not cf:
+                    text_embeds = [
+                        narration, 
+                        before, 
+                        after
+                        ]
+                elif state and cf:
+                    text_embeds = [
+                        narration, 
+                        before, 
+                        after, 
+                        CF1, CF2, CF3
+                        ]
+                elif not state and cf:
+                    text_embeds = [
+                        narration, 
+                        CF1, CF2, CF3
+                        ]
+                else:
+                    text_embeds = [narration]
 
         elif hierarchy == 'parent':    
             
@@ -175,6 +174,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 agg_v_embeds = data['aggregated_verb_vec'].to(self.device)
             data['summary_feats'] = data['summary_feats'].to(self.device)
             text_embeds = self.allgather(data['summary_feats'], self.n_gpu, self.args)
+        
         data['video'] = data['video'].to(self.device)
         n_embeds = data['noun_vec'].to(self.device)
         v_embeds = data['verb_vec'].to(self.device)                    
@@ -187,8 +187,6 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             1. When hierarchy != 'parent': The data dict will not contain 'aggregated_text' parameter
             2. When hierarchy == 'parent': 'text' will always contain summary text and 'aggregated_text' will contain narrations
             '''
-            n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
-            v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
             
             if hierarchy == 'parent':
                 # text_embeds and video_embeds are the aggregated parent embeddings passed through self.aggregation
@@ -197,6 +195,9 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             else:
                 video_embeds, frame_embeds = self.model(data['video'])
                 frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
+            
+            n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
+            v_embeds = self.allgather(v_embeds, self.n_gpu, self.args)
             video_embeds = self.allgather(video_embeds, self.n_gpu, self.args)
             
 
@@ -217,8 +218,8 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 # For handling text aggregation
                 # text_stacked_embeds = text_stacked_embeds.view(batch_size, -1, text_stacked_embeds.shape[1])
 
-                agg_n_embeds = agg_n_embeds.view(batch_size, -1, agg_n_embeds.shape[1])
-                agg_v_embeds = agg_v_embeds.view(batch_size, -1, agg_v_embeds.shape[1])
+                agg_n_embeds = agg_n_embeds.contiguous().view(batch_size, -1, agg_n_embeds.shape[1])
+                agg_v_embeds = agg_v_embeds.contiguous().view(batch_size, -1, agg_v_embeds.shape[1])
                 # Do text child if text aggregation method is used. For summary, we need to invoke a call to model again
                 #if self.config['training_methods']['text aggregation']:
                 # if True:
@@ -279,13 +280,14 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             # n_embeds = n_embeds.contiguous()
 
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
-                key_cf = key_cf.permute(1,0,2).contiguous()
-                order_cf = order_cf.permute(1,0,2).contiguous()
-                loss_dict, loss = self.loss.forward_summary(text_embeds, video_embeds, key_cf, order_cf, v_embeds, n_embeds) #output1 is text and summary
+                bsz, cf, d = key_cf.shape
+                key_cf = key_cf.contiguous().view(cf,bsz,d)
+                order_cf = order_cf.contiguous().view(cf,bsz,d)
+                loss_dict, loss = self.loss.forward_summary(text_embeds.contiguous(), video_embeds.contiguous(), key_cf, order_cf, v_embeds.contiguous(), n_embeds.contiguous()) #output1 is text and summary
             else:
-                loss_dict, loss, _, _ = self.loss(text_embeds, video_embeds, \
+                loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
-                                                frame_embeds=frame_embeds, do_tcn=True)
+                                                frame_embeds)
 
             # intra_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_intra_loss is not None)
             # inter_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_inter_loss is not None)
@@ -299,6 +301,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             #     loss = clip_loss + total_intra_loss + total_inter_loss
             # else:
             #     raise ValueError
+
         if self.args.rank == 0:
             wandb.log(loss_dict)
         loss = loss.contiguous()

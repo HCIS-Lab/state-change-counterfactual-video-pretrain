@@ -197,6 +197,8 @@ if __name__ == '__main__':
     ex.add_config(config._config)
 
     if args.rank == 0:
+        wandb.login()
+        wandb.init(project="ego4d_vlm_FLAVA_agg")
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
     print("The rank(local) of this node is {}({})".format(args.rank, args.local_rank))

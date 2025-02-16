@@ -35,7 +35,7 @@
                         "reader": "cv2_egoclip",
                         "shuffle": true,
                         "num_workers": 16,
-                        "batch_size": 21,
+                        "batch_size": 18,
                         "split": "train",
                         "subsample": "mcq",
                         "text_params": {
