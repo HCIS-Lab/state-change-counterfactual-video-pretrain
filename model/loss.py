@@ -86,7 +86,8 @@ class InfoNCE(nn.Module):
         # video-text only
         # EgoNCE
 
-        loss_align, _, mask_bool = self.forward_align(narration, video_embeds, v_embeds, n_embeds)
+        loss_align, x, _ = self.forward_align(narration, video_embeds, v_embeds, n_embeds)
+        mask_bool = torch.eye(x.shape[0]).cuda()
         
         loss_dict['align'] = loss_align.item()
         
@@ -241,9 +242,9 @@ class InfoNCE(nn.Module):
         # loss_cf_key = torch.tensor([0]).cuda()
 
         loss_dict = {
-            "parent_align": loss_align.item(),
-            "parent_cf_key": loss_cf_key.item(),
-            "parent_cf_order": loss_cf_order.item()
+            "parent_align": gamma*loss_align.item(),
+            "parent_cf_key": alpha*loss_cf_key.item(),
+            "parent_cf_order": beta*loss_cf_order.item()
         }
         summary_loss = gamma*loss_align.contiguous() + alpha*loss_cf_key + beta*loss_cf_order
 
