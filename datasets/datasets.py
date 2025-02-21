@@ -355,7 +355,8 @@ class GTEA(data.Dataset):
                  label_dir="./data/gtea/action_descriptions_id/",
                  class_dir="./data/gtea/gtea_id2act.json",
                  pretrain=True,
-                 n_split=None):
+                 n_split=None,
+                 video_encoder=True):
         if ds is None:
             ds = [1, 2, 4]
         if ol is None:
@@ -372,6 +373,7 @@ class GTEA(data.Dataset):
         self.class_dir = class_dir
         self.pretrain = pretrain
         self.n_split = n_split
+        self.video_encoder = video_encoder
 
         with open(self.class_dir, 'r') as f:
             self.classes = json.load(f)
@@ -399,6 +401,7 @@ class GTEA(data.Dataset):
         return seq_idx
 
     def __getitem__(self, index):
+        window_size = 21
         videoname = self.train_split[index]
         vsplt = videoname[0]
         vpath = os.path.join(self.frame_dir, vsplt)
@@ -408,6 +411,12 @@ class GTEA(data.Dataset):
         path_list.sort(key=lambda x: int(x[4:-4]))
         frame_index = self.frame_sampler(videoname, vlen)
         seq = [Image.open(os.path.join(vpath, path_list[i])).convert('RGB') for i in frame_index]
+        
+        if self.video_encoder:
+            first_frame = seq[0]
+            last_frame = seq[-1]
+            seq = [first_frame] * 10 + seq + [last_frame] * 10
+        
         vid = vlabel[frame_index]
         if self.pretrain:
             vid = torch.from_numpy(vid)
@@ -423,8 +432,22 @@ class GTEA(data.Dataset):
             convert_tensor = transforms.ToTensor()
             seq = [convert_tensor(img) for img in seq]
             seq = torch.stack(seq)
-        # seq = torch.stack(seq, 1)
-        # seq = seq.permute(1, 0, 2, 3)
+
+        if self.video_encoder:
+            
+            stride = 1  # Adjust if needed for non-overlapping windows
+
+            # Ensure seq is a tensor before slicing
+            if isinstance(seq, list):
+                seq = torch.stack(seq)  # Convert list of tensors into a single tensor
+
+            # Create sliding windows
+            seq = [seq[i : i + window_size] for i in range(len(seq) - window_size + 1)]
+
+            # Convert to a single tensor if needed
+            seq = torch.stack(seq)  # Shape: (num_windows, 21, C, H, W)
+
+            print(seq.shape)  # Expected: (num_windows, 21, C, H, W)
         return seq, vid
 
     def __len__(self):
@@ -434,17 +457,18 @@ class GTEA(data.Dataset):
 
 class GTEA_FRAMES(data.Dataset):
     def __init__(self,
-                 root='./data/gtea',
+                 root='/nfs/wattrel/data/md0/datasets/action_seg_datasets/GTEA',
                  small_test=False,
-                 frame_dir='./data/gtea/frames/',
+                 frame_dir='/nfs/wattrel/data/md0/datasets/action_seg_datasets/GTEA/frames/',
                  save_feat_dir='gtea_vit_features',
-                 transform=None):
+                 transform=None,
+                 sliding_window=15):
         self.root = root
         self.small_test = small_test
         self.frame_dir = frame_dir
         self.save_feat_dir = save_feat_dir
         self.transform = transform
-
+        self.sliding_window = sliding_window
         all_files = os.walk(self.frame_dir)
         self.convert_tensor = transforms.ToTensor()
         self.data_lst = []
@@ -453,12 +477,19 @@ class GTEA_FRAMES(data.Dataset):
                 self.data_lst.append((filelst, path))
 
     def __getitem__(self, index):
+        window_size = self.sliding_window
         videoname = self.data_lst[index]
         vroot = videoname[1]
         path_list = videoname[0]
         # vlen = len(path_list)
         path_list.sort(key=lambda x: int(x[4:-4]))
         seq = [Image.open(os.path.join(vroot, p)).convert('RGB') for p in path_list]
+
+        if self.sliding_window:
+            first_frame = seq[0]
+            last_frame = seq[-1]
+            seq = [first_frame] * ((self.sliding_window-1)//2) + seq + [last_frame] * ((self.sliding_window-1)//2)
+
         if self.transform is not None:
             seq = self.transform(seq)
         else:
@@ -467,6 +498,23 @@ class GTEA_FRAMES(data.Dataset):
             seq = torch.stack(seq)
         vsplt = vroot.split('/')[-1]
         fname = vsplt + '.npy'
+
+        # if self.sliding_window:
+            
+        #     stride = 1  # Adjust if needed for non-overlapping windows
+
+        #     # Ensure seq is a tensor before slicing
+        #     if isinstance(seq, list):
+        #         seq = torch.stack(seq)  # Convert list of tensors into a single tensor
+
+        #     # Create sliding windows
+        #     # seq = [seq[i : i + window_size] for i in range(len(seq) - window_size + 1)]
+
+        #     # Convert to a single tensor if needed
+        #     seq = torch.stack(seq)  # Shape: (num_windows, 21, C, H, W)
+
+        #     print(seq.shape)  # Expected: (num_windows, 21, C, H, W)
+
         return seq, fname
 
     def __len__(self):
