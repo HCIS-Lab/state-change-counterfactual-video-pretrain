@@ -1,6 +1,7 @@
 import torch
 # import model.hiervl_model as module_arch
-import model.counterfactual as module_arch
+import model.hiervl_model as module_arch
+import json
 
 # adapted from hiervl
 
@@ -15,7 +16,9 @@ def model_load(model_path):
     print("Loading checkpoint: {} ...".format(model_path))
 
     checkpoint = torch.load(model_path, map_location='cpu')
-    config = checkpoint['config']
+
+    config = torch.load("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch5.pth", map_location='cpu')['config']
+    config['arch']['type'] = "FrozenInTime"
     model = config.initialize('arch', module_arch)
 
     state_dict = checkpoint['state_dict']
@@ -47,7 +50,7 @@ def model_load(model_path):
     else:
         new_state_dict = state_dict
 
-    model.load_state_dict(new_state_dict)
+    model.load_state_dict(new_state_dict, strict=False)
 
     for param in model.parameters():
         param.requires_grad = False
@@ -59,5 +62,8 @@ def model_load(model_path):
     return model
 
 if __name__ == "__main__":
-    # model = model_load("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch5.pth")
+    # model = model_load("/nfs/wattrel/data/md0/datasets/state_aware/hievl_sa.pth")
+    # x = {"video": torch.randn(1, 16, 3, 224, 224)}
+    # y = model(x)
+    # print(y.shape)
     raise Exception("I should not be main")
