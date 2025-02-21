@@ -143,7 +143,7 @@ class FrozenInTime(BaseModel):
         if do_aggregation and batch_size is None:
             raise NotImplementedError("If do_aggregation is activated, batch_size must be provided.")
         if video_only:
-            video_data = data['video']
+            video_data = data
             video_embeddings = self.compute_video(video_data)
             return video_embeddings
 

@@ -5,7 +5,7 @@ import json
 
 # adapted from hiervl
 
-def model_load(model_path):
+def model_load_hiervl(model_path):
     """
     Load from saved checkpoints
 
