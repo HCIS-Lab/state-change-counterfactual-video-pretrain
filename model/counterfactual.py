@@ -46,8 +46,6 @@ class CF(BaseModel):
             attn_drop_rate = video_params.get('attn_drop_rate', 0.)
             vit_init = video_params.get('vit_init', 'imagenet-21k')
             if arch_config == 'base_patch16_224':
-                # vit_model = timm.models.vision_transformer.vit_base_patch16_224(pretrained=pretrained)
-                # vit_model = torch.load("pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 vit_model = torch.load("/nfs/wattrel/data/md0/datasets/state_aware/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 # vit_model = torch.load("/N/project/ego4d_vlm/state-aware-video-pretrain/pretrained/jx_vit_base_p16_224-80ecf9dd.pth", map_location="cpu")
                 print("pre-trained model found.")
@@ -77,9 +75,6 @@ class CF(BaseModel):
         # for backwards compatibility (old models)
         self.video_model.fc = nn.Identity()
 
-        self.head_ht100m_linear_probe = nn.Sequential(
-            nn.Linear(projection_dim, 100)
-        )
 
         # Project to a common embedding
         if projection == 'minimal':
@@ -127,38 +122,19 @@ class CF(BaseModel):
         if video_only:
             video_data = video
             video_embeddings, frame_embeddings = self.compute_video(video_data)
-            return video_embeddings, frame_embeddings
+            # return video_embeddings, frame_embeddings
+            return video_embeddings
 
         video_data = video
-
         video_embeddings, frame_embeddings = self.compute_video(video_data)
-
-        # if 'aggregated_text' in data and do_aggregation:
-        #     # If aggregated_text is present in the dict, the model should always return the
-        #     # aggregated features. If clip-level, return original text_embeddings
-        #     # Text parent embedding should always come from 'aggregated_text'
-        #     text_stacked_embeddings = self.compute_text(data['aggregated_text'])
-        # else:
-        #     text_stacked_embeddings = None #Only in val
-
 
         if do_aggregation:
             video_parent_embeddings = self.aggregation(video_embeddings, batch_size)
-            # Always aggregate on aggreagted_text, never on summary or clip-narrations
-            # if text_stacked_embeddings is not None:
-            #     text_parent_embeddings = self.aggregation(text_stacked_embeddings, batch_size)
-            # else:
-            #     text_parent_embeddings = None
 
         if return_embeds and not do_aggregation:
             return  video_embeddings, frame_embeddings
         elif return_embeds and do_aggregation:
             return video_embeddings, video_parent_embeddings
-        # elif not return_embeds and not do_aggregation:
-        #     return sim_matrix(text_embeddings, video_embeddings)
-        # else:
-        #     raise NotImplementedError
-        #     return sim_matrix(text_embeddings, video_embeddings), sim_matrix(text_parent_embeddings, video_parent_embeddings), text_stacked_embeddings
 
     def compute_video_aggregation(self, video_embeddings, batch_size):
         # Needed because we want to do aggregation separately as well
