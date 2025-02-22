@@ -53,7 +53,7 @@ class ConfigParser:
         # set save_dir where trained model and log will be saved.
         save_dir = Path(self.config['trainer']['save_dir'])
         # timestamp = datetime.now().strftime(r'%m%d_%H%M%S') if timestamp else ''
-        timestamp = datetime.now().strftime(r'%m%d_%H:%M:%S') if timestamp else ''
+        timestamp = datetime.now().strftime(r'%m%d_%H_%M_%S') if timestamp else ''
         print('Starting timestamp is {}'.format(timestamp))
         if 'SLURM_JOBID' in os.environ:
             #current_model_save_dir = timestamp + '_{}'.format(os.environ['JOB_NAME'])
@@ -117,6 +117,8 @@ class ConfigParser:
             if param not in module_args and param in self.config:
                 module_args[param] = self[param]
             if module_name == 'FrozenInTime' and param == 'args':
+                module_args[param] = self.args
+            if module_name == 'CF' and param == 'args':
                 module_args[param] = self.args
             if module_name == 'MultiDistTextVideoDataLoader' and param == 'args':
                 module_args[param] = self.args
