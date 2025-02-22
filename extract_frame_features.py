@@ -153,7 +153,7 @@ def main():
                         feature_list = []
                         for i, sb in enumerate(sub_batches):
                             sb = sb.to(device)
-                            sb_features = model(sb)
+                            sb_features = model(video=sb, video_only=True)
                             #print(sb_features.shape)
                             feature_list.append(sb_features)
 
