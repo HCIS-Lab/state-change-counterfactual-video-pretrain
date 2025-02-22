@@ -79,7 +79,7 @@ class VideoPatchEmbed(nn.Module):
     def forward(self, x):
         B, F, C, H, W = x.shape
         assert F <= self.num_frames
-        x = x.view(-1, C, H, W)
+        x = x.reshape(-1, C, H, W)
         x = self.proj(x)
         return x
 

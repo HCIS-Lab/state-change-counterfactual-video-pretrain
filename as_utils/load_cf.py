@@ -4,7 +4,7 @@ import model.counterfactual as module_arch
 
 # adapted from hiervl
 
-def model_cf(model_path):
+def load_cf(model_path):
     """
     Load from saved checkpoints
 
@@ -47,7 +47,7 @@ def model_cf(model_path):
     else:
         new_state_dict = state_dict
 
-    model.load_state_dict(new_state_dict)
+    model.load_state_dict(new_state_dict, strict=False)
 
     for param in model.parameters():
         param.requires_grad = False

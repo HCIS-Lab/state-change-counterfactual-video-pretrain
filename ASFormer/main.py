@@ -19,6 +19,7 @@ torch.backends.cudnn.deterministic = True
  
 parser = argparse.ArgumentParser()
 parser.add_argument('--action', default='train')
+parser.add_argument('--feature', default='cf')
 parser.add_argument('--dataset', default="50salads")
 parser.add_argument('--split', default='1')
 parser.add_argument('--model_dir', default='models')
@@ -31,7 +32,13 @@ num_epochs = 120
 lr = 0.0005
 num_layers = 10
 num_f_maps = 64
-features_dim = 2048
+if args.feature == 'i3d':
+    features_dim = 2048
+elif args.feature == 'cf':
+    features_dim = 768
+elif args.feature == 'hiervl':
+    features_dim = 256
+
 bz = 1
 
 channel_mask_rate = 0.3
@@ -52,16 +59,16 @@ if args.dataset == 'breakfast':
     lr = 0.0001
 
 
-vid_list_file = "./data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
-vid_list_file_tst = "./data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
-features_path = "./data/"+args.dataset+"/features/"
-gt_path = "./data/"+args.dataset+"/groundTruth/"
+vid_list_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
+vid_list_file_tst = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
+features_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/"+args.dataset+"/" +args.feature+'_split'+args.split+'/'
+gt_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/groundTruth/"
  
-mapping_file = "./data/"+args.dataset+"/mapping.txt"
+mapping_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/mapping.txt"
  
-model_dir = "./{}/".format(args.model_dir)+args.dataset+"/split_"+args.split
+model_dir = ".models/{}/".format(args.feature)+args.dataset+"/split_"+args.split
 
-results_dir = "./{}/".format(args.result_dir)+args.dataset+"/split_"+args.split
+results_dir = ".results/{}/".format(args.feature)+args.dataset+"/split_"+args.split
  
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)

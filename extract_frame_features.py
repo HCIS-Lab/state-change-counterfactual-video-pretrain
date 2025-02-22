@@ -11,6 +11,7 @@ import pprint
 from pathlib import Path
 from as_utils.Augmentation import *
 from as_utils.load_hiervl import *
+from as_utils.load_cf import *
 
 import numpy as np
 
@@ -31,7 +32,7 @@ def main():
     parser.add_argument('--config', '-cfg', default='./as_configs/gtea/gtea_exfm.yaml')
     parser.add_argument('--log_time', default='')
     parser.add_argument('--dataset', default='gtea')
-    parser.add_argument('--model', default='hiervl')
+    parser.add_argument('--model', default='cf')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -72,7 +73,9 @@ def main():
     elif args.model == 'hiervl':
         model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
         model = torch.nn.DataParallel(model).cuda()
-    # elif args.model == 'cf':
+    elif args.model == 'cf':
+        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
+        model = torch.nn.DataParallel(model).cuda()
     # elif args.model == 'pvr':
     # elif args.model == '':
 
@@ -130,17 +133,13 @@ def main():
                 if not os.path.exists(os.path.join(save_dir, filename[0])):
                     window_size = 15
                     # [b, c*windows, t, h, w]
-                    #print(window.shape)
                     b, win_c , h, w = window.size()
                     window = window.reshape(1, -1, 3, h, w)
-                    #window = window.reshape(-1, 3, t, h, w)
                     b, T_padded, c, h, w = window.shape
-                    #print(window.shape)
                     window = window.as_strided(
                         size=(b, T_padded - window_size + 1, window_size, c, h, w),  # [b, T, 21, c, h, w]
                         stride=(window.stride(0), window.stride(1), window.stride(1), window.stride(2), window.stride(3), window.stride(4))
                     )
-                    #print(window.shape)
                     window = window.reshape(-1, window_size, 3, h, w)
                     sub_batches = torch.split(window, 2, dim=0)
                     # if non_splt:
@@ -150,7 +149,7 @@ def main():
                     
                     # image_input = window.view(b * t, c, h, w)
 
-                    if True:
+                    if non_splt :
                         feature_list = []
                         for i, sb in enumerate(sub_batches):
                             sb = sb.to(device)
@@ -161,19 +160,15 @@ def main():
                         feature = torch.stack(feature_list[:-1], dim=0)
                         b, _, c = feature.shape
                         feature = feature.reshape(-1, c)
-                        #print(feature.shape)
-                        #print(feature_list[-1].shape)
                         feature = torch.cat((feature, feature_list[-1]), dim=0)
+                        feature = feature.permute(1,0)
                         np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())
-                    #else:
-                    #    video_inputs = torch.split(image_input, 1024)
-                    #    image_features = []
-                    #    for inp in video_inputs:
-                    #        inp = inp.to(device)
-                    #        image_features.append(model.encode_image(inp))
-                    #    image_features = torch.cat(image_features)
-                    #    np.save(os.path.join(save_dir, filename[0]), image_features.cpu().numpy())
-
+                    else:
+                        image_inputs = image_input.to(device)
+                        image_features = model_image(image_inputs)
+                        image_features = image_features.view(b, t, -1)
+                        for bb in range(b):
+                            np.save(os.path.join(save_dir, filename[bb]), image_features[bb, :].cpu().numpy())
 
 if __name__ == '__main__':
     main()

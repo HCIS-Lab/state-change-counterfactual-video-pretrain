@@ -3,21 +3,21 @@ seed: 1024
 data:
     dataset: gtea
     modality: RGB
-    num_frames: 16
+    num_frames: 15
     seg_length: 1
-    split: 1
+    split: 2
     batch_size: 1
     workers: 0
     gpus: 4
     num_classes: 74
     index_bias: 1
     input_size: 224
-    save_dir: './data/gtea/gtea_vit_features_splt1'
+    save_dir: '/nfs/wattrel/data/md0/datasets/action_seg_datasets/GTEA/hiervl_split2'
     randaug:
         N: 0 #2
         M: 0  #9
 network:
-    arch: ViT-B/16  #ViT-B/32 ViT-B/16
+    arch: cf  #ViT-B/32 ViT-B/16
     init: True # scratch, imagenet, kinetics
     drop_out: 0.0 # probability of an element to be zeroed
     emb_dropout: 0.0 # probability of embedding to be zeroed
