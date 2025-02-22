@@ -146,23 +146,23 @@ class InfoNCE(nn.Module):
                 torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
                 # (torch.exp(neg3) / self.num_neg).sum(-1)
         
-        denom_tcn_0 = denom_tcn_0.sum(-1)
-        denom_tcn_3 = denom_tcn_3.sum(-1)
-        
-        tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+        denom_tcn_0 = denom_tcn_0.sum(-1).unsqueeze(-1)
+        denom_tcn_3 = denom_tcn_3.sum(-1).unsqueeze(-1)
+
+        tcn_0_log = torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) + \
                 torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
         
-        tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
+        tcn_3_log = torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) + \
                 torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
         
-        tcn_0 /= 2
-        tcn_3 /= 2
+        tcn_0 = (-tcn_0_log / 2).mean()
+        tcn_3 = (-tcn_3_log / 2).mean()
         
-        tcn = .2*((tcn_3 + tcn_0) / 2.0).mean()
+        tcn = .1*(tcn_3 + tcn_0)
 
         loss_dict['tcn'] = tcn.item()
 
-        loss = loss_align.contiguous() + tcn.contiguous()
+        loss = loss_align + tcn
 
         return loss_dict, loss
     
@@ -193,22 +193,16 @@ class InfoNCE(nn.Module):
     
     def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
         epsilon = 1e-8
-        sim_cf = F.cosine_similarity(video_embeds, text_embeds) # [10, 8, 8]
-        # CF1, CF2, CF3, CF4, CF5, CF6, CF7, CF8, CF9, CF10 = sim_cf.chunk(10, dim=0)
-        denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0)
+        vid_expanded = video_embeds.unsqueeze(0).expand(10, -1, -1)
 
-        # denom_tcn_0 = epsilon + torch.exp(CF1/self.temperature) + torch.exp(CF2/self.temperature) + \
-        #         torch.exp(CF3/self.temperature) + torch.exp(CF4/self.temperature) + \
-        #         torch.exp(CF5/self.temperature) + torch.exp(CF6/self.temperature) + torch.exp(CF7/self.temperature) + \
-        #         torch.exp(CF8/self.temperature) + torch.exp(CF9/self.temperature) + torch.exp(CF10/self.temperature)
-        #+ \
-                #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
+        sim_cf = F.cosine_similarity(vid_expanded.unsqueeze(2), text_embeds.unsqueeze(1), dim=-1)
+        denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0) + torch.exp(summ_align/self.temperature).sum(-1)
             
-        denom_tcn_0 = denom_tcn_0.sum(-1)
+        denom_tcn_0 = denom_tcn_0.sum(-1).unsqueeze(-1)
             
         tcn_0 = -torch.log( torch.sum( ( (torch.exp(summ_align/self.temperature) + epsilon) / denom_tcn_0 ) * mask, dim=-1 ) ) 
             
-        tcn = tcn_0.mean().contiguous()
+        tcn = tcn_0.mean()
 
         return tcn
         
