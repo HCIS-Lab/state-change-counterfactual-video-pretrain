@@ -254,8 +254,8 @@ class EgoAggregation(TextVideoDataset):
             'verb_vec': verb_vec,
             'aggregated_noun_vec': aggregated_noun_vec,
             'aggregated_verb_vec': aggregated_verb_vec,
-            'CF_key': text_feats[11:, :],
-            'CF_order': text_feats[1:11, :],
+            'CF_parent': text_feats[1:, :],
+            # 'CF_order': text_feats[1:11, :],
         }
 
     def _get_val_item(self, item):

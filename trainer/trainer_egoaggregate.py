@@ -108,8 +108,8 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 data['verb_vec'] = torch.cat((data['verb_vec'], data['verb_vec_neg']), axis=0)
                 data['narration'] = torch.cat((data['narration'], data['text_neg_feat']), axis = 0)
                 if state:
-                    data['before'] = torch.cat((data['before'], data['neg_before']), axis = 0)
-                    data['after'] = torch.cat((data['after'], data['neg_after']), axis = 0)
+                    # data['before'] = torch.cat((data['before'], data['neg_before']), axis = 0)
+                    # data['after'] = torch.cat((data['after'], data['neg_after']), axis = 0)
                     data['before'] = data['before'].to(self.device)
                     data['after'] = data['after'].to(self.device)
                     data['before'].requires_grad = False
@@ -118,9 +118,9 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                         before = self.allgather(data['before'], self.n_gpu, self.args)
                         after = self.allgather(data['after'], self.n_gpu, self.args)
                 if cf:
-                    data['CF1'] = torch.cat((data['CF1'], data['neg_cf1']), axis = 0)
-                    data['CF2'] = torch.cat((data['CF2'], data['neg_cf2']), axis = 0)
-                    data['CF3'] = torch.cat((data['CF3'], data['neg_cf3']), axis = 0)
+                    # data['CF1'] = torch.cat((data['CF1'], data['neg_cf1']), axis = 0)
+                    # data['CF2'] = torch.cat((data['CF2'], data['neg_cf2']), axis = 0)
+                    # data['CF3'] = torch.cat((data['CF3'], data['neg_cf3']), axis = 0)
                     data['CF1'] = data['CF1'].to(self.device)
                     data['CF2'] = data['CF2'].to(self.device)
                     data['CF3'] = data['CF3'].to(self.device)
@@ -163,10 +163,11 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
         elif hierarchy == 'parent':    
             
             if cf:
-                key_cf = data['CF_key'].to(self.device)
-                order_cf = data['CF_order'].to(self.device)
-                key_cf = self.allgather(key_cf, self.n_gpu, self.args)
-                order_cf = self.allgather(order_cf, self.n_gpu, self.args)
+                cf_parent = data['CF_parent'].to(self.device)
+                with torch.no_grad():
+                # order_cf = data['CF_order'].to(self.device)
+                    cf_parent = self.allgather(cf_parent, self.n_gpu, self.args)
+                # order_cf = self.allgather(order_cf, self.n_gpu, self.args)
 
             if 'aggregated_text_feature' in data.keys():
                 # data['aggregated_text_feature'] = data['aggregated_text_feature'].to(self.device)
@@ -194,6 +195,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
 
             else:
                 video_embeds, frame_embeds = self.model(data['video'])
+                frame_embeds = frame_embeds[:frame_embeds.shape[0] // 2]
                 frame_embeds = self.allgather(frame_embeds, self.n_gpu, self.args)
             
             n_embeds = self.allgather(n_embeds, self.n_gpu, self.args)
@@ -280,10 +282,10 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             # n_embeds = n_embeds.contiguous()
 
             if hierarchy == 'parent' and not only_sa_no_summary_baseline:
-                bsz, cf, d = key_cf.shape
-                key_cf = key_cf.contiguous().view(cf,bsz,d)
-                order_cf = order_cf.contiguous().view(cf,bsz,d)
-                loss_dict, loss = self.loss.forward_summary(text_embeds.contiguous(), video_embeds.contiguous(), key_cf, order_cf, v_embeds.contiguous(), n_embeds.contiguous()) #output1 is text and summary
+                bsz, cf, d = cf_parent.shape
+                cf_parent = cf_parent.contiguous().view(cf,bsz,d)
+                # order_cf = order_cf.contiguous().view(cf,bsz,d)
+                loss_dict, loss = self.loss.forward_summary(text_embeds.contiguous(), video_embeds.contiguous(), cf_parent, v_embeds.contiguous(), n_embeds.contiguous()) #output1 is text and summary
             else:
                 loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
