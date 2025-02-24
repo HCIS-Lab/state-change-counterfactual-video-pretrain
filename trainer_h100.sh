@@ -10,7 +10,7 @@
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=500G
+#SBATCH --mem=400G
 #SBATCH --cpus-per-task=32
 #SBATCH --time=48:00:00
 #SBATCH --output=slurm/%x-%j.out
@@ -19,12 +19,15 @@
 echo "SLURM_JOBID: " $SLURM_JOBID
 MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 MASTER_PORT=6000
-GPUS_PER_NODE=2
+GPUS_PER_NODE=4
 NNODES=$SLURM_NNODES
 
 export JOB_NAME=$SLURM_JOB_NAME
 export NCCL_DEBUG=INFO
-export NCCL_SOCKET_IFNAME=enp33s0
+# export NCCL_IB_IFNAME=mlx5_0   # or the interface name in 'ibstat'
+# export NCCL_SOCKET_IFNAME=eth0
+export NCCL_IB_DISABLE=1
+export NCCL_SOCKET_IFNAME=eth0
 module load ffmpeg/4.0.2
 
 #module load conda
@@ -35,4 +38,4 @@ module load ffmpeg
 # Print allocated GPUs for debugging
 echo "Allocated GPUs:"
 
-srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/clip_cf_h100.json --experiment egoaggregation
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/agg_cf_h100.json --experiment egoaggregation

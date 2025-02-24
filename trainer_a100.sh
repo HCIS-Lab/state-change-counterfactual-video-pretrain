@@ -10,7 +10,7 @@
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=256G
+#SBATCH --mem=450G
 #SBATCH --cpus-per-task=32
 #SBATCH --time=48:00:00
 #SBATCH --output=slurm/%x-%j.out
@@ -25,6 +25,7 @@ NNODES=$SLURM_NNODES
 export JOB_NAME=$SLURM_JOB_NAME
 export NCCL_DEBUG=INFO
 
+
 #module load conda
 module --ignore-cache load "conda"
 source ~/.bashrc
@@ -33,4 +34,4 @@ module load ffmpeg
 # Print allocated GPUs for debugging
 echo "Allocated GPUs:"
 
-srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/clip_cf_a100.json --experiment egoaggregation
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/agg_cf_a100.json --experiment egoaggregation

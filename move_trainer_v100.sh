@@ -11,7 +11,7 @@ if [ "$1" = "" ]; then
     exit 1
 fi
 
-export JOB_NAME=$1_$(date '+%Y-%m-%d_%H:%M:%S')
+export JOB_NAME=$1_$(date '+%Y-%m-%d_%H_%M_%S')
 export DESTINATION_DIR='experiments'
 
 mkdir $DESTINATION_DIR/$JOB_NAME/
