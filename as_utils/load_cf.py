@@ -16,6 +16,7 @@ def load_cf(model_path):
 
     checkpoint = torch.load(model_path, map_location='cpu')
     config = checkpoint['config']
+    config['arch']['args']['load_checkpoint'] = model_path
     model = config.initialize('arch', module_arch)
 
     state_dict = checkpoint['state_dict']
