@@ -54,7 +54,7 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
-    if args.model == 'CLIP':
+    if args.model == 'clip':
         model, clip_state_dict = clip.load(config.network.arch, device=device, jit=False, tsm=config.network.tsm,
                                        T=config.data.num_segments, dropout=config.network.drop_out,
                                        emb_dropout=config.network.emb_dropout, if_proj=config.network.if_proj)
