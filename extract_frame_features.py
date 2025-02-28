@@ -158,7 +158,10 @@ def main():
                         window = padded_video.reshape(-1, window_size, 3, h, w)
                         
                         window = window.to(device)
-                        feature = model(data=window, video_only=True)
+                        if args.model == 'hiervl' or 'cf' in args.model:
+                            feature = model(data=window, video_only=True)
+                        else:
+                            feature = model(window)
                         # [b*num_frames, c]
                         feature = feature.reshape(b, config.data.num_frames, -1)
                         feature = feature.permute(0,2,1)
