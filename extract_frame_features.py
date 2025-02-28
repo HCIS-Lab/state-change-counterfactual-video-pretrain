@@ -84,7 +84,7 @@ def main():
         model = torch.nn.DataParallel(model).cuda()
     # elif args.model == 'pvr':
     # elif args.model == '':
-    elif args,model == 'milnce':
+    elif args.model == 'milnce':
         model = load_milnce()
         model = torch.nn.DataParallel(model).cuda()
 
