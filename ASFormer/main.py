@@ -38,6 +38,10 @@ elif 'cf' in args.feature:
     features_dim = 768
 elif args.feature == 'hiervl':
     features_dim = 256
+elif args.feature == 'milnce':
+    features_dim = 1024
+elif args.feature == 'clip':
+    features_dim = 768
 
 bz = 1
 
