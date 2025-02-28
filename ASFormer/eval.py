@@ -141,8 +141,8 @@ def segment_bars_with_confidence(save_path, confidence, *labels):
  
  
 def func_eval(dataset, recog_path, file_list):
-    ground_truth_path = "./data/" + dataset + "/groundTruth/"
-    mapping_file = "./data/" + dataset + "/mapping.txt"
+    ground_truth_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/" + dataset + "/groundTruth/"
+    mapping_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/" + dataset + "/mapping.txt"
     list_of_videos = read_file(file_list).split('\n')[:-1]
  
     file_ptr = open(mapping_file, 'r')
@@ -223,7 +223,7 @@ def main():
     if args.split == 0:
         for split in range(1, cnt_split_dict[args.dataset] + 1):
             recog_path = "./{}/".format(args.result_dir)+args.dataset+"/split_{}".format(split)+"/"
-            file_list = "./data/"+args.dataset+"/splits/test.split{}".format(split)+".bundle"
+            file_list = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/splits/test.split{}".format(split)+".bundle"
             acc, edit, f1s = func_eval(args.dataset, recog_path, file_list)
             acc_all += acc
             edit_all += edit
@@ -237,7 +237,7 @@ def main():
     else:
         split = args.split
         recog_path = "./{}/".format(args.result_dir)+args.dataset+"/split_{}".format(split)+"/"
-        file_list = "./data/"+args.dataset+"/splits/test.split{}".format(split)+".bundle"
+        file_list = "./nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/splits/test.split{}".format(split)+".bundle"
         acc_all, edit_all, f1s_all = func_eval(args.dataset, recog_path, file_list)
     
     print("Acc: %.4f  Edit: %4f  F1@10,25,50 " % (acc_all, edit_all), f1s_all)

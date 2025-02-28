@@ -19,7 +19,7 @@ torch.backends.cudnn.deterministic = True
  
 parser = argparse.ArgumentParser()
 parser.add_argument('--action', default='train')
-parser.add_argument('--feature', default='cf')
+parser.add_argument('--feature', default='cf') #cf_1e5_18b_10epoch cf_7e6_16b_epoch5
 parser.add_argument('--dataset', default="50salads")
 parser.add_argument('--split', default='1')
 parser.add_argument('--model_dir', default='models')
@@ -34,7 +34,7 @@ num_layers = 10
 num_f_maps = 64
 if args.feature == 'i3d':
     features_dim = 2048
-elif args.feature == 'cf':
+elif 'cf' in args.feature:
     features_dim = 768
 elif args.feature == 'hiervl':
     features_dim = 256
@@ -57,23 +57,22 @@ if args.dataset == "gtea":
     
 if args.dataset == 'breakfast':
     lr = 0.0001
+    num_epochs = 20
 
 
-vid_list_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
-vid_list_file_tst = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
+vid_list_file = "/nfs/wattrel/data/md0/kung/state-aware-video-pretrain/data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
+vid_list_file_tst = "/nfs/wattrel/data/md0/kung/state-aware-video-pretrain/data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
 features_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/"+args.dataset+"/" +args.feature+'_split'+args.split+'/'
+if args.dataset == 'breakfast':
+    features_path = features_path + 'combined_feat/'
 gt_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/groundTruth/"
  
 mapping_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/mapping.txt"
  
-model_dir = ".models/{}/".format(args.feature)+args.dataset+"/split_"+args.split
-
-results_dir = ".results/{}/".format(args.feature)+args.dataset+"/split_"+args.split
- 
-if not os.path.exists(model_dir):
-    os.makedirs(model_dir)
-if not os.path.exists(results_dir):
-    os.makedirs(results_dir)
+model_dir = os.path.join("models", args.feature, args.dataset, "split_"+args.split)
+os.makedirs(model_dir, exist_ok=True)
+results_dir = os.path.join("results", args.feature, args.dataset, "split_"+args.split)
+os.makedirs(results_dir, exist_ok=True)
  
  
 file_ptr = open(mapping_file, 'r')

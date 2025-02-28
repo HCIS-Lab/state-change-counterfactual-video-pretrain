@@ -271,7 +271,7 @@ class Encoder(nn.Module):
             x = x.unsqueeze(2)
             x = self.dropout(x)
             x = x.squeeze(2)
-
+            
         feature = self.conv_1x1(x)
         for layer in self.layers:
             feature = layer(feature, None, mask)
