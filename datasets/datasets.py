@@ -292,11 +292,11 @@ class Breakfast_acti(data.Dataset):
 
 class Breakfast_FRAMES(data.Dataset):
     def __init__(self,
-                 root='./data/breakfast',
+                 root='/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/breakfast',
                  small_test=False,
-                 frame_dir='./data/breakfast/frames/',
+                 frame_dir='/nfs/wattrel/data/md0/datasets/action_seg_datasets/breakfast/frames/',
                  save_feat_dir='bf_vit_features',
-                 num_frames=32,
+                 num_frames=15,
                  transforms=None):
         self.root = root
         self.small_test = small_test
@@ -304,9 +304,6 @@ class Breakfast_FRAMES(data.Dataset):
         self.save_feat_dir = save_feat_dir
         self.num_frames = num_frames
         self.transform = transforms
-        #
-        # self.data_lst = np.load(
-        #     os.path.join(root, 'splits', 'breakfast_acti.npy'))
 
         self.data_lst = np.load(
             os.path.join(root, 'splits', 'breakfast_exfm.npy'))

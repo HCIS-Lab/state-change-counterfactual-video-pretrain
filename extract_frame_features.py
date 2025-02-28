@@ -12,7 +12,8 @@ from pathlib import Path
 from as_utils.Augmentation import *
 from as_utils.load_hiervl import *
 from as_utils.load_cf import *
-
+from as_utils.load_milnce import *
+import clip
 import numpy as np
 
 
@@ -29,10 +30,10 @@ def main():
     global args, best_prec1
     global global_step
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', '-cfg', default='./as_configs/gtea/gtea_exfm.yaml')
+    parser.add_argument('--config', '-cfg', default='./as_configs/breakfast/breakfast_exfm.yaml')
     parser.add_argument('--log_time', default='')
-    parser.add_argument('--dataset', default='gtea')
-    parser.add_argument('--model', default='cf')
+    parser.add_argument('--dataset', default='breakfast')
+    parser.add_argument('--model', default='hiervl')
     args = parser.parse_args()
 
     with open(args.config, 'r') as f:
@@ -74,10 +75,18 @@ def main():
         model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
         model = torch.nn.DataParallel(model).cuda()
     elif args.model == 'cf':
-        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
+        /nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831
+        /N/project/ego4d_vlm/state-aware-video-pretrain/experiments/a_2e5_2025-02-16_20_51_14/results/EgoClip_4f/models/4362317/checkpoint-epoch3.pth
+        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831/checkpoint-epoch6.pth")
+        # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0225_12_21_14/cf_7e6_16b_epoch5.pth")
+        #model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
+        # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
         model = torch.nn.DataParallel(model).cuda()
     # elif args.model == 'pvr':
     # elif args.model == '':
+    elif args,model == 'milnce':
+        model = load_milnce()
+        model = torch.nn.DataParallel(model).cuda()
 
     transform_val = get_augmentation(False, config)
 
@@ -92,8 +101,6 @@ def main():
     val_loader = DataLoader(val_data, batch_size=config.data.batch_size, num_workers=20,
                             shuffle=False, pin_memory=False, drop_last=False)
 
-
-    
 
     model.eval()
     save_dir = config.data.save_dir
@@ -131,30 +138,54 @@ def main():
         with torch.no_grad():
             for iii, (window, filename) in enumerate(tqdm(val_loader)):
                 if not os.path.exists(os.path.join(save_dir, filename[0])):
-                    window_size = 15
-                    # [b, c*windows, t, h, w]
-                    b, win_c , h, w = window.size()
-                    window = window.reshape(1, -1, 3, h, w)
-                    b, T_padded, c, h, w = window.shape
-                    window = window.as_strided(
-                        size=(b, T_padded - window_size + 1, window_size, c, h, w),  # [b, T, 21, c, h, w]
-                        stride=(window.stride(0), window.stride(1), window.stride(1), window.stride(2), window.stride(3), window.stride(4))
-                    )
-                    window = window.reshape(-1, window_size, 3, h, w)
-                    sub_batches = torch.split(window, 2, dim=0)
-                    # if non_splt:
-                    #     window = window.view((-1, config.data.num_frames, 3) + window.size()[-2:])
-                    # else:
-                    #     window = window.view((1, -1,  3) + window.size()[-2:])
                     
-                    # image_input = window.view(b * t, c, h, w)
-
                     if non_splt :
+                        window_size = 15
+                        # [b, 96, 224, 224]
+                        window = window.view((-1, config.data.num_frames, 3) + window.size()[-2:])
+                        # [b, 32, 3, 224, 224]
+                        b, T_padded, c, h, w = window.shape
+                        # window = window.to(device)
+                        # [1, 15, 3, 224, 224]
+                        first_frame = window[:, 0:1, :, :, :]  # Shape: [b, 1, C, H, W]
+                        last_frame = window[:, -1:, :, :, :]   # Shape: [b, 1, C, H, W]
+                        front_padding = first_frame.repeat(1, (window_size-1)//2, 1, 1, 1)  # Shape: [b, 7, C, H, W]
+                        rear_padding = last_frame.repeat(1, (window_size-1)//2, 1, 1, 1)    # Shape: [b, 7, C, H, W]
+                        padded_video = torch.cat([front_padding, window, rear_padding], dim=1)
+                        # [b, T+14, c, h , w]
+                        b, T, C, H, W = padded_video.shape  # T = 24 (10 original + 7 front + 7 rear)
+                        padded_video = padded_video.unfold(dimension=1, size=window_size, step=1)  # Shape: [b, T_new, window_size, C, H, W]
+                        window = padded_video.reshape(-1, window_size, 3, h, w)
+                        
+                        window = window.to(device)
+                        feature = model(data=window, video_only=True)
+                        # [b*num_frames, c]
+                        feature = feature.reshape(b, config.data.num_frames, -1)
+                        feature = feature.permute(0,2,1)
+                        
+                        for bb in range(b):
+                            np.save(os.path.join(save_dir, filename[bb]), feature[bb, :].cpu().numpy())
+                        # image_features = model(window)
+                        # image_features = image_features.view(b, t, -1)
+                        # for bb in range(b):
+                        #     np.save(os.path.join(save_dir, filename[bb]), image_features[bb, :].cpu().numpy())
+                    else:
+                        window_size = 15
+                        # [b, c*windows, t, h, w]
+                        b, win_c , h, w = window.size()
+                        window = window.reshape(1, -1, 3, h, w)
+                        b, T_padded, c, h, w = window.shape
+                        window = window.as_strided(
+                            size=(b, T_padded - window_size + 1, window_size, c, h, w),  # [b, T, 21, c, h, w]
+                            stride=(window.stride(0), window.stride(1), window.stride(1), window.stride(2), window.stride(3), window.stride(4))
+                        )
+                        window = window.reshape(-1, window_size, 3, h, w)
+                        sub_batches = torch.split(window, 8, dim=0)
+
                         feature_list = []
                         for i, sb in enumerate(sub_batches):
                             sb = sb.to(device)
                             sb_features = model(video=sb, video_only=True)
-                            #print(sb_features.shape)
                             feature_list.append(sb_features)
 
                         feature = torch.stack(feature_list[:-1], dim=0)
@@ -163,12 +194,6 @@ def main():
                         feature = torch.cat((feature, feature_list[-1]), dim=0)
                         feature = feature.permute(1,0)
                         np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())
-                    else:
-                        image_inputs = image_input.to(device)
-                        image_features = model_image(image_inputs)
-                        image_features = image_features.view(b, t, -1)
-                        for bb in range(b):
-                            np.save(os.path.join(save_dir, filename[bb]), image_features[bb, :].cpu().numpy())
 
 if __name__ == '__main__':
     main()

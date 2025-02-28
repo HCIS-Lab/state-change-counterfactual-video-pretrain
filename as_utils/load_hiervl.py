@@ -17,7 +17,7 @@ def load_hiervl(model_path):
 
     checkpoint = torch.load(model_path, map_location='cpu')
 
-    config = torch.load("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch5.pth", map_location='cpu')['config']
+    config = torch.load("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/ckpt_1e5_18bsz_epoch5.pth", map_location='cpu')['config']
     config['arch']['type'] = "FrozenInTime"
     model = config.initialize('arch', module_arch)
 

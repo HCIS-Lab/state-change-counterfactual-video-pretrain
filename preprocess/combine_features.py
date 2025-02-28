@@ -4,9 +4,9 @@ import glob
 import pandas as pd
 import json
 
-dataset = '50salads'
-feat_name = '50salads_vit_features_splt1'
-feat_root = './data/'+dataset+'/features_dir/'+feat_name
+dataset = 'breakfast/'
+feat_name = 'hiervl_splt1'
+feat_root = '/nfs/wattrel/data/md0/datasets/action_seg_datasets/'+dataset+feat_name
 final_dir = 'combined_feat'
 final_root = os.path.join(feat_root, final_dir)
 feats = glob.glob(feat_root + '/*')
@@ -25,7 +25,7 @@ for name, group in df.groupby('vid'):
     vlen = v_vlen[name]
     result = np.zeros((vlen, 768))
     for index, row in group.iterrows():
-        tfeat = np.load(row.paths)
+        tfeat = np.transpose(np.load(row.paths))
         if index == group.index[-1]:
             diff = vlen - row.ind
             result[row.ind:, :] = tfeat[:diff, :]
