@@ -193,54 +193,55 @@ class InfoNCE(nn.Module):
     
     def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
         epsilon = 1e-8
-        vid_expanded = video_embeds.unsqueeze(0).expand(10, -1, -1)
+        vid_expanded = video_embeds.unsqueeze(0).expand(20, -1, -1)
         sim_cf = F.cosine_similarity(vid_expanded.unsqueeze(2), text_embeds.unsqueeze(1), dim=-1)
-
-        denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0).sum(-1).unsqueeze(-1)
+        align_sim = torch.exp(summ_align/self.temperature) + epsilon
+        denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0) + align_sim
+        denom_tcn_1 = denom_tcn_0.sum(-1).unsqueeze(-1)
             
-        tcn_0 = -torch.log( torch.sum( ( (torch.exp(summ_align/self.temperature) + epsilon) / denom_tcn_0 ) * mask, dim=-1 ) ) 
+        tcn_0 = -torch.log( torch.sum( ( align_sim / denom_tcn_1 ) * mask, dim=-1 ) ) 
         
         tcn = tcn_0.mean().contiguous()
 
         return tcn
         
     
-    def forward_summary(self, summary_embeds, video_embeds, cf_key, cf_order, v_embeds, n_embeds):
+    def forward_summary(self, summary_embeds, video_embeds, cf_key, v_embeds, n_embeds):
 
-        alpha = .1
-        beta = .1
-        gamma = 1. - alpha - beta
-        loss_align, x, mask_bool = self.forward_align(
+        # alpha = .1
+        # beta = .1
+        # gamma = 1. - alpha - beta
+        _, x, mask_bool = self.forward_align(
                         text_embeds=summary_embeds, 
                         video_embeds=video_embeds,
                         v_embeds=v_embeds,
                         n_embeds=n_embeds,
                         )
         
-        loss_cf_key = self.forward_cf(
+        loss_align = self.forward_cf(
                         text_embeds=cf_key, 
                         video_embeds=video_embeds,
                         summ_align=x,
                         mask=mask_bool,
                         )
-        loss_cf_order = self.forward_cf(
-                        text_embeds=cf_order, 
-                        video_embeds=video_embeds,
-                        summ_align=x,
-                        mask=mask_bool,
-                        )
+        # loss_cf_order = self.forward_cf(
+        #                 text_embeds=cf_order, 
+        #                 video_embeds=video_embeds,
+        #                 summ_align=x,
+        #                 mask=mask_bool,
+        #                 )
         # loss_cf_order = torch.tensor([0]).cuda()
         # loss_align = torch.tensor([0]).cuda()
         # loss_cf_key = torch.tensor([0]).cuda()
 
         loss_dict = {
-            "parent_align": gamma*loss_align.item(),
-            "parent_cf_key": alpha*loss_cf_key.item(),
-            "parent_cf_order": beta*loss_cf_order.item()
+            "parent_align": loss_align.item(),
+            # "parent_cf_key": alpha*loss_cf_key.item(),
+            # "parent_cf_order": beta*loss_cf_order.item()
         }
-        summary_loss = gamma*loss_align + alpha*loss_cf_key + beta*loss_cf_order
+        # summary_loss = gamma*loss_align + alpha*loss_cf_key + beta*loss_cf_order
 
-        return loss_dict, summary_loss
+        return loss_dict, loss_align
 
 
 def sim(tensor1, tensor2):
