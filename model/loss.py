@@ -68,33 +68,14 @@ class InfoNCE(nn.Module):
         self.noun = noun
         self.verb = verb
 
-    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
-        loss_dict = {}
-        epsilon = 1e-8
-        
-        narration, before, after, CF1, CF2, CF3 = text_embeds
-        narration = narration[0]  # TODO check why this is a tuple
-        narration.requires_grad = False
+    def forward_tcn(self, frame_embeds, text_embeds, mask_bool, setting):
+        before, after, CF1, CF2, CF3 = text_embeds
         before.requires_grad = False
         after.requires_grad = False
         CF1.requires_grad = False
         CF2.requires_grad = False
         CF3.requires_grad = False
-
-        # video_text_alignment
-        assert video_embeds.requires_grad
-        # video-text only
-        # EgoNCE
-
-        loss_align, x, _ = self.forward_align(narration, video_embeds, v_embeds, n_embeds)
-        mask_bool = torch.eye(x.shape[0]).cuda()
-        
-        loss_dict['align'] = loss_align.item()
-        
-
-        ## Within Video TCN Loss
-
-        assert frame_embeds.requires_grad
+        epsilon = 1e-8
 
         bs, num_frame, _ = frame_embeds.shape
         frame_embeds = frame_embeds.reshape(bs, num_frame, -1)
@@ -119,50 +100,97 @@ class InfoNCE(nn.Module):
         sim_3_cf2 = sim_matrix(f3, CF2)
         sim_3_cf3 = sim_matrix(f3, CF3)
 
-    # For the specified number of negatives from other videos
-    # Add it as a negative
+        if setting == 4: # regular tcn
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
+                torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) 
 
-        # TODO: check this
-        # neg0 = []
-        # neg3 = []
-        # for _ in range(self.num_neg):
-        #     f0_shuf = f0[torch.randperm(f0.size()[0])]
-        #     f3_shuf = f3[torch.randperm(f3.size()[0])]
-        #     neg0.append(sim(f0, f0_shuf))
-        #     neg3.append(sim(f3, f3_shuf))
-        # neg0 = torch.stack(neg0, -1)
-        # neg3 = torch.stack(neg3, -1)
-    
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
+                    torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) 
+            
+        elif setting == 2: # only before state
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) 
 
-        # TODO just separate softmax for cf before and after
-        #
-        denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
-            torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
-            torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) #+ \
-            #   (torch.exp(neg0) / self.num_neg).sum(-1)  # Normalize negatives
-
-        denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
-                torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
-                torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) #+ \
-                # (torch.exp(neg3) / self.num_neg).sum(-1)
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature)
         
+        elif setting == 3: # before and after state (no cf)
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature)
+
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature)
+            
+        else:
+            raise NotImplementedError("tcn setting undefined")
+
         denom_tcn_0 = denom_tcn_0.sum(-1).unsqueeze(-1)
         denom_tcn_3 = denom_tcn_3.sum(-1).unsqueeze(-1)
+
+        if (setting == 4) or (setting == 3): 
+            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+            
+            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
         
-        tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
-                torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+        elif setting == 2:
+            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+            
+            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
         
-        tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
-                torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
+        else:
+            raise NotImplementedError("tcn setting undefined")
         
         tcn_0 /= 2
         tcn_3 /= 2
         
         tcn = .2*((tcn_3 + tcn_0) / 2.0).mean()
 
+        return tcn
+
+
+    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds, setting):
+        loss_dict = {}
+        
+        narration, before, after, CF1, CF2, CF3 = text_embeds
+        narration = narration[0]  # TODO check why this is a tuple
+        narration.requires_grad = False
+        before.requires_grad = False
+        after.requires_grad = False
+        CF1.requires_grad = False
+        CF2.requires_grad = False
+        CF3.requires_grad = False
+
+        # video_text_alignment
+        assert video_embeds.requires_grad
+        # video-text only
+        # EgoNCE
+
+        loss_align, x, _ = self.forward_align(narration, video_embeds, v_embeds, n_embeds)
+        mask_bool = torch.eye(x.shape[0]).cuda()
+        
+        loss_dict['align'] = loss_align.item()
+        
+        ## Within Video TCN Loss
+
+        assert frame_embeds.requires_grad
+        
+        if setting == 1:
+            tcn = torch.tensor([0.]).cuda()
+        elif setting > 1 and setting < 5:
+            tcn = self.forward_tcn(frame_embeds, text_embeds[1:], mask_bool, setting)
+        elif setting == 5 or setting == 6 or setting == 0:
+            tcn = self.forward_tcn(frame_embeds, text_embeds[1:], mask_bool, setting=4)
+        else:
+            raise NotImplementedError("forward setting undefined")
+
         loss_dict['tcn'] = tcn.item()
 
-        loss = loss_align.contiguous() + tcn.contiguous()
+        loss = loss_align + tcn
 
         return loss_dict, loss
     
@@ -197,7 +225,8 @@ class InfoNCE(nn.Module):
     
     def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
         epsilon = 1e-8
-        vid_expanded = video_embeds.unsqueeze(0).expand(20, -1, -1)
+        dim = text_embeds.shape[0]
+        vid_expanded = video_embeds.unsqueeze(0).expand(dim, -1, -1)
         sim_cf = F.cosine_similarity(vid_expanded.unsqueeze(2), text_embeds.unsqueeze(1), dim=-1)
         align_sim = torch.exp(summ_align/self.temperature) + epsilon
         denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0) + align_sim
@@ -211,11 +240,17 @@ class InfoNCE(nn.Module):
         return tcn
         
     
-    def forward_summary(self, summary_embeds, video_embeds, cf_parent, v_embeds, n_embeds):
+    def forward_summary(self, summary_embeds, video_embeds, cf_parent, v_embeds, n_embeds, setting):
+        
+        if setting == 0:
+            pass
+        elif setting == 5:
+            cf_parent = cf_parent[11:, :]
+        elif setting == 6:
+            cf_parent = cf_parent[1:11, :]
+        else:
+            raise NotImplementedError("parent loss setting undefined")
 
-        # alpha = .1
-        # beta = .1
-        # gamma = 1. - alpha - beta
         _, x, mask_bool = self.forward_align(
                         text_embeds=summary_embeds, 
                         video_embeds=video_embeds,
@@ -230,22 +265,10 @@ class InfoNCE(nn.Module):
                         summ_align=x,
                         mask=mask_bool,
                         )
-        # loss_cf_order = self.forward_cf(
-        #                 text_embeds=cf_order, 
-        #                 video_embeds=video_embeds,
-        #                 summ_align=x,
-        #                 mask=mask_bool,
-        #                 )
-        # loss_cf_order = torch.tensor([0]).cuda()
-        # loss_align = torch.tensor([0]).cuda()
-        # loss_cf_key = torch.tensor([0]).cuda()
 
         loss_dict = {
             "parent_align": loss_align.item(),
-            # "parent_cf_key": alpha*loss_cf_key.item(),
-            # "parent_cf_order": beta*loss_cf_order.item()
         }
-        # summary_loss = gamma*loss_align + alpha*loss_cf_key + beta*loss_cf_order
 
         return loss_dict, loss_align
 
