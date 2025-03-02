@@ -166,7 +166,7 @@ class InfoNCE(nn.Module):
 
         return loss_dict, loss
     
-    def forward_align(self, text_embeds, video_embeds, v_embeds, n_embeds):
+    def forward_align(self, text_embeds, video_embeds, v_embeds, n_embeds, parent=False):
         x = sim_matrix(video_embeds, text_embeds)
         # print(x.shape)
         mask_diag = torch.eye(x.shape[0]).cuda()
@@ -180,10 +180,14 @@ class InfoNCE(nn.Module):
             mask = mask_n + mask_diag
         else:
             mask = mask_v + mask_diag
+        
+        mask_bool = (mask > 0)*1
 
+        if parent:
+            return 0., x, mask_bool
+        
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
         align_sm = F.softmax(x/self.temperature, dim=1) 
-        mask_bool = (mask > 0)*1
         idiag = torch.log(torch.sum(align_sm * mask_bool, dim=1) )
 
         loss_align = idiag.sum() / len(idiag)
@@ -197,6 +201,7 @@ class InfoNCE(nn.Module):
         sim_cf = F.cosine_similarity(vid_expanded.unsqueeze(2), text_embeds.unsqueeze(1), dim=-1)
         align_sim = torch.exp(summ_align/self.temperature) + epsilon
         denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0) + align_sim
+        
         denom_tcn_1 = denom_tcn_0.sum(-1).unsqueeze(-1)
             
         tcn_0 = -torch.log( torch.sum( ( align_sim / denom_tcn_1 ) * mask, dim=-1 ) ) 
@@ -206,7 +211,7 @@ class InfoNCE(nn.Module):
         return tcn
         
     
-    def forward_summary(self, summary_embeds, video_embeds, cf_key, v_embeds, n_embeds):
+    def forward_summary(self, summary_embeds, video_embeds, cf_parent, v_embeds, n_embeds):
 
         # alpha = .1
         # beta = .1
@@ -216,10 +221,11 @@ class InfoNCE(nn.Module):
                         video_embeds=video_embeds,
                         v_embeds=v_embeds,
                         n_embeds=n_embeds,
+                        parent=True,
                         )
         
         loss_align = self.forward_cf(
-                        text_embeds=cf_key, 
+                        text_embeds=cf_parent, 
                         video_embeds=video_embeds,
                         summ_align=x,
                         mask=mask_bool,
