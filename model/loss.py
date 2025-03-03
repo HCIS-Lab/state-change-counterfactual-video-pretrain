@@ -223,12 +223,22 @@ class InfoNCE(nn.Module):
 
         return loss_align, x, mask_bool
     
-    def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
+    def forward_cf(self, text_embeds, video_embeds, summ_align, mask, setting):
         epsilon = 1e-8
         dim = text_embeds.shape[0]
+        
+        if (setting > 0 and setting < 5):
+            align_sim = torch.exp(summ_align/self.temperature) + epsilon
+            denom_tcn_1 = align_sim.sum(-1).unsqueeze(-1)
+            tcn_0 = -torch.log( torch.sum( ( align_sim / denom_tcn_1 ) * mask, dim=-1 ) ) 
+            tcn = tcn_0.mean().contiguous()
+
+            return tcn
+        
         vid_expanded = video_embeds.unsqueeze(0).expand(dim, -1, -1)
         sim_cf = F.cosine_similarity(vid_expanded.unsqueeze(2), text_embeds.unsqueeze(1), dim=-1)
         align_sim = torch.exp(summ_align/self.temperature) + epsilon
+
         denom_tcn_0 = torch.exp(sim_cf/self.temperature).sum(0) + align_sim
         
         denom_tcn_1 = denom_tcn_0.sum(-1).unsqueeze(-1)
@@ -242,14 +252,12 @@ class InfoNCE(nn.Module):
     
     def forward_summary(self, summary_embeds, video_embeds, cf_parent, v_embeds, n_embeds, setting):
         
-        if setting == 0:
-            pass
-        elif setting == 5:
-            cf_parent = cf_parent[11:, :]
+        if setting == 5:
+            cf_parent = cf_parent[10:, :]
         elif setting == 6:
-            cf_parent = cf_parent[1:11, :]
+            cf_parent = cf_parent[:10, :]
         else:
-            raise NotImplementedError("parent loss setting undefined")
+            pass
 
         _, x, mask_bool = self.forward_align(
                         text_embeds=summary_embeds, 
@@ -264,6 +272,7 @@ class InfoNCE(nn.Module):
                         video_embeds=video_embeds,
                         summ_align=x,
                         mask=mask_bool,
+                        setting=setting
                         )
 
         loss_dict = {

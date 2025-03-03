@@ -16,7 +16,7 @@ import random
 from base import Multi_BaseTrainer_dist
 from model.counterfactual import sim_matrix
 from utils import inf_loop
-import wandb
+# import wandb
 
 class AllGather_multi(torch.autograd.Function):
     """An autograd function that performs allgather on a tensor."""
@@ -96,9 +96,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             param_group['lr'] = lr
     
     def _train_step(self, data, epoch, batch_idx, dl_idx, hierarchy='child', state=True, cf=True):
-        setting = 6
-        if (setting > 0 and setting < 5) and (hierarchy == 'parent'):
-            return 0.0
+        setting = 1
 
         if hierarchy == 'child':
             batch_size = self.batch_size
