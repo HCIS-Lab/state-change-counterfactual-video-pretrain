@@ -13,10 +13,16 @@ from as_utils.Augmentation import *
 from as_utils.load_hiervl import *
 from as_utils.load_cf import *
 from as_utils.load_milnce import *
+from as_utils.load_pvrl import *
+
 import clip
 import numpy as np
 
 
+dataset = 'breakfast'
+config = './as_configs/breakfast/breakfast_exfm.yaml'
+model_name = 'pvrl'
+log_time = ''
 class ImageCLIP(nn.Module):
     def __init__(self, model):
         super(ImageCLIP, self).__init__()
@@ -27,19 +33,21 @@ class ImageCLIP(nn.Module):
 
 
 def main():
-    global args, best_prec1
+    # global args, best_prec1
+    global best_prec1
     global global_step
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', '-cfg', default='./as_configs/breakfast/breakfast_exfm.yaml')
-    parser.add_argument('--log_time', default='')
-    parser.add_argument('--dataset', default='breakfast')
-    parser.add_argument('--model', default='hiervl')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--config', '-cfg', default='./as_configs/breakfast/breakfast_exfm.yaml')
+    # parser.add_argument('--log_time', default='')
+    # parser.add_argument('--dataset', default='breakfast')
+    # parser.add_argument('--model', default='hiervl')
+    # args = parser.parse_args()
 
-    with open(args.config, 'r') as f:
+
+    with open(config, 'r') as f:
         config = yaml.safe_load(f)
     working_dir = os.path.join('./exp', config['network']['type'], config['network']['arch'], config['data']['dataset'],
-                               args.log_time)
+                               log_time)
     print('-' * 80)
     print(' ' * 20, "working dir: {}".format(working_dir))
     print('-' * 80)
@@ -54,7 +62,7 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
-    if args.model == 'clip':
+    if model_name == 'clip':
         model, clip_state_dict = clip.load(config.network.arch, device=device, jit=False, tsm=config.network.tsm,
                                        T=config.data.num_segments, dropout=config.network.drop_out,
                                        emb_dropout=config.network.emb_dropout, if_proj=config.network.if_proj)
@@ -71,30 +79,30 @@ def main():
             else:
                 print(("=> no checkpoint found at '{}'".format(config.pretrain)))
 
-    elif args.model == 'hiervl':
+    elif model_name == 'hiervl':
         model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
         model = torch.nn.DataParallel(model).cuda()
-    elif args.model == 'cf':
-        /nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831
-        /N/project/ego4d_vlm/state-aware-video-pretrain/experiments/a_2e5_2025-02-16_20_51_14/results/EgoClip_4f/models/4362317/checkpoint-epoch3.pth
+    elif model_name == 'cf':
+        # /nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831
+        # /N/project/ego4d_vlm/state-aware-video-pretrain/experiments/a_2e5_2025-02-16_20_51_14/results/EgoClip_4f/models/4362317/checkpoint-epoch3.pth
         model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831/checkpoint-epoch6.pth")
         # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0225_12_21_14/cf_7e6_16b_epoch5.pth")
         #model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
         # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
         model = torch.nn.DataParallel(model).cuda()
-    # elif args.model == 'pvr':
-    # elif args.model == '':
-    elif args.model == 'milnce':
+    elif model_name == 'pvrl':
+        model = load_pvrl("/nfs/wattrel/data/md0/datasets/state_aware/pvrl/model_epoch_00025.pyth")
+    elif model_name == 'milnce':
         model = load_milnce()
         model = torch.nn.DataParallel(model).cuda()
 
     transform_val = get_augmentation(False, config)
 
-    if args.dataset == 'breakfast':
+    if dataset == 'breakfast':
         val_data = Breakfast_FRAMES(transforms=transform_val)
-    elif args.dataset == 'gtea':
+    elif dataset == 'gtea':
         val_data = GTEA_FRAMES(transform=transform_val)
-    elif args.dataset == 'salads':
+    elif dataset == 'salads':
         val_data = SALADS_FRAMES(transform=transform_val)
     else:
         val_data = None
@@ -105,12 +113,12 @@ def main():
     model.eval()
     save_dir = config.data.save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
-    if args.dataset == 'gtea':
+    if dataset == 'gtea':
         non_splt = False
     else:
         non_splt = True
 
-    if args.model == 'clip':
+    if model_name == 'clip':
         with torch.no_grad():
             for iii, (image, filename) in enumerate(tqdm(val_loader)):
                 if not os.path.exists(os.path.join(save_dir, filename[0])):
@@ -141,7 +149,7 @@ def main():
                     
                     if non_splt :
                         window_size = 15
-                        if args.model == 'milnce':
+                        if model_name == 'milnce':
                             window = 16
                         # [b, 96, 224, 224]
                         window = window.view((-1, config.data.num_frames, 3) + window.size()[-2:])
@@ -169,9 +177,9 @@ def main():
                         window = padded_video.reshape(-1, window_size, 3, h, w)
                         
                         window = window.to(device)
-                        if args.model == 'hiervl' or 'cf' in args.model:
+                        if model_name == 'hiervl' or 'cf' in model:
                             feature = model(data=window, video_only=True)
-                        elif args.model == 'milnce':
+                        elif model_name == 'milnce':
                             window = window.permute(0,2,1,3,4)
                             feature = model(window)
                             feature = feature['mixed_5c']
