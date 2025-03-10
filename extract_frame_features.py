@@ -9,20 +9,22 @@ from dotmap import DotMap
 import pprint
 # from as_utils.text_prompt import *
 from pathlib import Path
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'as_utils')))
 from as_utils.Augmentation import *
 from as_utils.load_hiervl import *
 from as_utils.load_cf import *
-from as_utils.load_milnce import *
+# from as_utils.load_milnce import *
 from as_utils.load_pvrl import *
 
-import clip
+# import clip
 import numpy as np
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
+device = "cuda:4" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
-dataset = 'breakfast'
-config = './as_configs/breakfast/breakfast_exfm.yaml'
-model_name = 'pvrl'
-log_time = ''
+# sbatch -A r01220 -p gpu extract_feats.sh
 class ImageCLIP(nn.Module):
     def __init__(self, model):
         super(ImageCLIP, self).__init__()
@@ -31,11 +33,15 @@ class ImageCLIP(nn.Module):
     def forward(self, image):
         return self.model.encode_image(image)
 
-
 def main():
     # global args, best_prec1
     global best_prec1
     global global_step
+    dataset = 'breakfast'
+    config = './as_configs/breakfast/breakfast_exfm.yaml'
+    model_name = 'pvrl'
+    log_time = ''
+
     # parser = argparse.ArgumentParser()
     # parser.add_argument('--config', '-cfg', default='./as_configs/breakfast/breakfast_exfm.yaml')
     # parser.add_argument('--log_time', default='')
@@ -60,7 +66,6 @@ def main():
 
     config = DotMap(config)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
     if model_name == 'clip':
         model, clip_state_dict = clip.load(config.network.arch, device=device, jit=False, tsm=config.network.tsm,
@@ -68,7 +73,7 @@ def main():
                                        emb_dropout=config.network.emb_dropout, if_proj=config.network.if_proj)
     # Must set jit=False for training  ViT-B/32
         model = ImageCLIP(model)
-        model = torch.nn.DataParallel(model).cuda()
+        model = torch.nn.DataParallel(model).to(device)
         clip.model.convert_weights(model)
         if config.pretrain:
             if os.path.isfile(config.pretrain):
@@ -81,20 +86,23 @@ def main():
 
     elif model_name == 'hiervl':
         model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
-        model = torch.nn.DataParallel(model).cuda()
+        model = model.to(device)
     elif model_name == 'cf':
+        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0226_23_46_03/ckpt_18b_1e5_epoch5_correct.pth")
         # /nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831
         # /N/project/ego4d_vlm/state-aware-video-pretrain/experiments/a_2e5_2025-02-16_20_51_14/results/EgoClip_4f/models/4362317/checkpoint-epoch3.pth
-        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831/checkpoint-epoch6.pth")
+        # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831/checkpoint-epoch6.pth")
         # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0225_12_21_14/cf_7e6_16b_epoch5.pth")
         #model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
         # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
-        model = torch.nn.DataParallel(model).cuda()
+        model = model.to(device)
     elif model_name == 'pvrl':
         model = load_pvrl("/nfs/wattrel/data/md0/datasets/state_aware/pvrl/model_epoch_00025.pyth")
+        model = model.to(device)
+        # model = load_pvrl("/N/project/ego4d_vlm/ProcedureVRL/data/clip_step_emb_coin.pth")
     elif model_name == 'milnce':
         model = load_milnce()
-        model = torch.nn.DataParallel(model).cuda()
+        model = torch.nn.DataParallel(model).to(device)
 
     transform_val = get_augmentation(False, config)
 
@@ -109,8 +117,8 @@ def main():
     val_loader = DataLoader(val_data, batch_size=config.data.batch_size, num_workers=20,
                             shuffle=False, pin_memory=False, drop_last=False)
 
-
     model.eval()
+
     save_dir = config.data.save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     if dataset == 'gtea':
@@ -143,10 +151,12 @@ def main():
                         image_features = torch.cat(image_features)
                         np.save(os.path.join(save_dir, filename[0]), image_features.cpu().numpy())
     else:
+        print("-"*20)
+        print("begun")
         with torch.no_grad():
             for iii, (window, filename) in enumerate(tqdm(val_loader)):
                 if not os.path.exists(os.path.join(save_dir, filename[0])):
-                    
+                    window = window.to(device)
                     if non_splt :
                         window_size = 15
                         if model_name == 'milnce':
@@ -176,13 +186,14 @@ def main():
                         padded_video = padded_video.unfold(dimension=1, size=window_size, step=1)  # Shape: [b, T_new, window_size, C, H, W]
                         window = padded_video.reshape(-1, window_size, 3, h, w)
                         
-                        window = window.to(device)
-                        if model_name == 'hiervl' or 'cf' in model:
-                            feature = model(data=window, video_only=True)
-                        elif model_name == 'milnce':
+                        # window = window.to(device)
+                        if model_name == 'hiervl' or 'cf' in model_name:
+                            feature = model(window, video_only=True)
+                        elif model_name == 'milnce' or model_name == 'pvrl':
                             window = window.permute(0,2,1,3,4)
                             feature = model(window)
-                            feature = feature['mixed_5c']
+                            if model_name == 'milnce':
+                                feature = feature['mixed_5c']
 
                         # [b*num_frames, c]
                         feature = feature.reshape(b, config.data.num_frames, -1)

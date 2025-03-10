@@ -292,7 +292,7 @@ class Breakfast_acti(data.Dataset):
 
 class Breakfast_FRAMES(data.Dataset):
     def __init__(self,
-                 root='/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/breakfast',
+                 root='/nfs/wattrel/data/md0/kung/state-aware-video-pretrain/data/breakfast',
                  small_test=False,
                  frame_dir='/nfs/wattrel/data/md0/datasets/action_seg_datasets/breakfast/frames/',
                  save_feat_dir='bf_vit_features',
