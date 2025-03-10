@@ -96,7 +96,7 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             param_group['lr'] = lr
     
     def _train_step(self, data, epoch, batch_idx, dl_idx, hierarchy='child', state=True, cf=True):
-        setting = 1
+        setting = 3
 
         if hierarchy == 'child':
             batch_size = self.batch_size
