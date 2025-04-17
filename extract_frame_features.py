@@ -1,6 +1,6 @@
 import os
 import torch.nn as nn
-from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES
+from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES, AE2_FRAMES
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import argparse
@@ -20,9 +20,9 @@ from as_utils.load_pvrl import *
 # import clip
 import numpy as np
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-device = "cuda:4" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
+device = "cuda:1" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
 # sbatch -A r01220 -p gpu extract_feats.sh
 class ImageCLIP(nn.Module):
@@ -37,9 +37,9 @@ def main():
     # global args, best_prec1
     global best_prec1
     global global_step
-    dataset = 'breakfast'
-    config = './as_configs/breakfast/breakfast_exfm.yaml'
-    model_name = 'pvrl'
+    dataset = 'ae2'
+    config = './as_configs/gtea/gtea_exfm.yaml'
+    model_name = 'cf'
     log_time = ''
 
     # parser = argparse.ArgumentParser()
@@ -88,7 +88,7 @@ def main():
         model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
         model = model.to(device)
     elif model_name == 'cf':
-        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0226_23_46_03/ckpt_18b_1e5_epoch5_correct.pth")
+        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0226_23_46_03/ckpt_18b_1e5_epoch7_correct.pth")
         # /nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831
         # /N/project/ego4d_vlm/state-aware-video-pretrain/experiments/a_2e5_2025-02-16_20_51_14/results/EgoClip_4f/models/4362317/checkpoint-epoch3.pth
         # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831/checkpoint-epoch6.pth")
@@ -108,6 +108,8 @@ def main():
 
     if dataset == 'breakfast':
         val_data = Breakfast_FRAMES(transforms=transform_val)
+    if dataset == 'ae2':
+        val_data = AE2_FRAMES(transform=transform_val)
     elif dataset == 'gtea':
         val_data = GTEA_FRAMES(transform=transform_val)
     elif dataset == 'salads':
@@ -121,7 +123,7 @@ def main():
 
     save_dir = config.data.save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
-    if dataset == 'gtea':
+    if dataset == 'gtea' or dataset == 'ae2':
         non_splt = False
     else:
         non_splt = True
@@ -155,6 +157,8 @@ def main():
         print("begun")
         with torch.no_grad():
             for iii, (window, filename) in enumerate(tqdm(val_loader)):
+                # print(window.shape)
+                # raise Exception("xx")
                 if not os.path.exists(os.path.join(save_dir, filename[0])):
                     window = window.to(device)
                     if non_splt :
@@ -199,8 +203,13 @@ def main():
                         feature = feature.reshape(b, config.data.num_frames, -1)
                         feature = feature.permute(0,2,1)
                         
-                        for bb in range(b):
-                            np.save(os.path.join(save_dir, filename[bb]), feature[bb, :].cpu().numpy())
+                        if dataset == 'ae2':
+                            for bb in range(b):
+                                np.save(filename[bb], feature[bb, :].cpu().numpy())
+                        else:
+                            for bb in range(b):
+                                np.save(os.path.join(save_dir, filename[bb]), feature[bb, :].cpu().numpy())
+
                         # image_features = model(window)
                         # image_features = image_features.view(b, t, -1)
                         # for bb in range(b):
@@ -229,7 +238,11 @@ def main():
                         feature = feature.reshape(-1, c)
                         feature = torch.cat((feature, feature_list[-1]), dim=0)
                         feature = feature.permute(1,0)
-                        np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())
+
+                        if dataset == 'ae2':
+                            np.save(filename[0], feature.cpu().numpy())
+                        else:
+                            np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())
 
 if __name__ == '__main__':
     main()

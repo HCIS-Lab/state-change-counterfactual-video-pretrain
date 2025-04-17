@@ -288,8 +288,7 @@ class Breakfast_acti(data.Dataset):
     def __len__(self):
         # return 1
         return len(self.train_split)
-
-
+    
 class Breakfast_FRAMES(data.Dataset):
     def __init__(self,
                  root='/nfs/wattrel/data/md0/kung/state-aware-video-pretrain/data/breakfast',
@@ -451,12 +450,49 @@ class GTEA(data.Dataset):
         # return 2
         return len(self.train_split)
 
+class AE2_FRAMES(data.Dataset):
+    def __init__(self,
+                 small_test=False,
+                 transform=None,
+                 sliding_window=15):
+        self.small_test = small_test
+        self.transform = transform
+        self.sliding_window = sliding_window
+        self.convert_tensor = transforms.ToTensor()
+        self.data_lst = np.load(
+            "/nfs/wattrel/data/md0/datasets/AE2/AE2_metadata.npy")
 
+    def __getitem__(self, index):
+        videoname = self.data_lst[index][0]
+        vroot = videoname
+        path_list0 = os.listdir(videoname)
+        path_list = [f.decode('utf-8') for f in path_list0]
+        # vlen = len(path_list)
+        path_list.sort(key=lambda x: int(x[4:-4]))
+        seq = [Image.open(os.path.join(vroot, p)).convert('RGB') for p in path_list]
+        if self.sliding_window:
+            first_frame = seq[0]
+            last_frame = seq[-1]
+            seq = [first_frame] * ((self.sliding_window-1)//2) + seq + [last_frame] * ((self.sliding_window-1)//2)
+
+        if self.transform is not None:
+            seq = self.transform(seq)
+        else:
+            convert_tensor = transforms.ToTensor()
+            seq = [convert_tensor(img) for img in seq]
+            seq = torch.stack(seq)
+        fname = vroot[:-7] + '_cf_epoch7.npy'
+
+        return seq, fname
+
+    def __len__(self):
+        return len(self.data_lst)
+    
 class GTEA_FRAMES(data.Dataset):
     def __init__(self,
-                 root='/nfs/wattrel/data/md0/datasets/action_seg_datasets/GTEA',
+                 root='/nfs/wattrel/data/md0/datasets/action_seg_datasets/gtea',
                  small_test=False,
-                 frame_dir='/nfs/wattrel/data/md0/datasets/action_seg_datasets/GTEA/frames/',
+                 frame_dir='/nfs/wattrel/data/md0/datasets/action_seg_datasets/gtea/frames/',
                  save_feat_dir='gtea_vit_features',
                  transform=None,
                  sliding_window=15):
