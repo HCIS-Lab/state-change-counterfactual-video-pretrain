@@ -467,13 +467,14 @@ class AE2_FRAMES(data.Dataset):
         vroot = videoname
         path_list0 = os.listdir(videoname)
         path_list = [f.decode('utf-8') for f in path_list0]
-        # vlen = len(path_list)
+        # print(len(path_list))
         path_list.sort(key=lambda x: int(x[4:-4]))
         seq = [Image.open(os.path.join(vroot, p)).convert('RGB') for p in path_list]
         if self.sliding_window:
             first_frame = seq[0]
             last_frame = seq[-1]
             seq = [first_frame] * ((self.sliding_window-1)//2) + seq + [last_frame] * ((self.sliding_window-1)//2)
+            # seq = [first_frame] * ((self.sliding_window)//2) + seq + [last_frame] * ((self.sliding_window-1)//2)
 
         if self.transform is not None:
             seq = self.transform(seq)
@@ -481,7 +482,7 @@ class AE2_FRAMES(data.Dataset):
             convert_tensor = transforms.ToTensor()
             seq = [convert_tensor(img) for img in seq]
             seq = torch.stack(seq)
-        fname = vroot[:-7] + '_cf_epoch7.npy'
+        fname = vroot[:-7] + '_milnce.npy'
 
         return seq, fname
 

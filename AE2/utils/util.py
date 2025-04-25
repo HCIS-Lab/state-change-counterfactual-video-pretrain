@@ -102,13 +102,18 @@ def get_category_metadata(cfg, metadata=None):
 
 
 def get_num_frames(video):
-    """
-    This method is used to calculate the number of frames in a video.
-    """
-    cap = cv2.VideoCapture(video)
-    num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    cap.release()
-    return num_frames
+    suffix="_cf_epoch7.npy"
+    if video.endswith(suffix):
+        base = video[:-len(suffix)]  # Remove the suffix
+        image_count = sum(
+                    1 for f in os.listdir(base + '_frames')
+                    if f.lower().endswith(('.jpg'))
+                )
+        return image_count
+    else:
+        # Optional: handle unexpected format
+        print(video)
+        raise ValueError(f"Filename does not end with expected suffix '{suffix}'")
 
 
 def get_video_fps(video):

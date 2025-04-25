@@ -36,24 +36,36 @@ def extract_embedding(mode, data_loader, model, save_path, device, object_box=Fa
     embeds_list = []
     labels_list = []
     for batch in tqdm(data_loader):
-        if object_box:
-            frame, frame_label, video_path, bbox = batch
-        else:
-            frame, frame_label, video_path = batch
-        print(frame.shape)
-        frame = frame.reshape(1, -1, *frame.shape[-3:])          # frame-(1, 64, 168, 168, 3)
-        frame = frame.permute(0, 1, 4, 2, 3).float().to(device)  # (1, 64, 3, 168, 168)
-        print(frame.shape)
-        raise Exception("xx")
+    #     if object_box:
+    #         frame, frame_label, video_path, bbox = batch
+    #     else:
+        frame, frame_label, video_path = batch
+        # print(frame.shape)
+        # print(frame_label.shape)
+        # print(video_path)
+        # print('-'*20)
+
+        # --------------------
+        # torch.Size([1, 768, 2])
+        # torch.Size([1])
+        # ('/nfs/wattrel/data/md0/datasets/AE2/AE2_data/break_eggs/ego/S18_52.953_64.303_cf_epoch7.npy',)
+        # --------------------
+
+
+    #     # print(frame.shape)
+    #     frame = frame.reshape(1, -1, *frame.shape[-3:])          # frame-(1, 64, 168, 168, 3)
+    #     frame = frame.permute(0, 1, 4, 2, 3).float().to(device)  # (1, 64, 3, 168, 168)
+    #     # print(frame.shape)
+    #     # raise Exception("xx")
     
-        with torch.no_grad():
-            if object_box:
-                bbox = bbox.unsqueeze(0).to(device)
-                embeds = model(frame, bbox)
-            else:
-                embeds = model(frame)
-        embeds = embeds.squeeze().cpu().numpy()
-        embeds_list.append(embeds)
+    #     with torch.no_grad():
+    #         if object_box:
+    #             bbox = bbox.unsqueeze(0).to(device)
+    #             embeds = model(frame, bbox)
+    #         else:
+    #             embeds = model(frame)
+        frame = frame.squeeze(-1).cpu().numpy()
+        embeds_list.append(frame)
         labels_list.append(frame_label.numpy())
 
     embeds = np.concatenate(embeds_list, axis=0)
@@ -72,18 +84,18 @@ def main():
     # prepare data loader
     object_bbox = True if 'bbox' in args.task else False
     loader_train, dataset_train = prepare_data_loader(args, 'train', batch_size=1, num_workers=args.num_workers, bbox=object_bbox)
-    loader_val, dataset_val = prepare_data_loader(args, args.eval_mode, batch_size=1, num_workers=args.num_workers, bbox=object_bbox)
+    loader_val, dataset_val = prepare_data_loader(args, 'test', batch_size=1, num_workers=args.num_workers, bbox=object_bbox)
 
     assert args.ckpt != ''
     print('*' * 10, f'Evaluating {args.ckpt} on {args.eval_mode} set', '*' * 10)
-    save_path = args.ckpt.replace('.pth', '_eval')
+    save_path = args.ckpt + '/embeddings' #.replace('.pth', '_eval')
     os.makedirs(save_path, exist_ok=True)
     if args.extract_embedding:
         model = "" #RoIPosEmbedder(args).to(device) if object_bbox else Embedder(args).to(device)
         # model.eval()
         # load_ckpt(model, args.ckpt)
         extract_embedding('train', loader_train, model, save_path, device, object_bbox)
-        extract_embedding('val', loader_val, model, save_path, device, object_bbox)
+        extract_embedding('test', loader_val, model, save_path, device, object_bbox)
         print(f'Extracting embedding to {save_path}')
     else:
         print(f'Loading embedding from {save_path}')

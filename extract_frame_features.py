@@ -14,15 +14,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'as_u
 from as_utils.Augmentation import *
 from as_utils.load_hiervl import *
 from as_utils.load_cf import *
-# from as_utils.load_milnce import *
+from as_utils.load_milnce import *
 from as_utils.load_pvrl import *
 
-# import clip
+import clip
 import numpy as np
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4,5"
 
-device = "cuda:1" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
+device = "cuda" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
 # sbatch -A r01220 -p gpu extract_feats.sh
 class ImageCLIP(nn.Module):
@@ -39,7 +39,7 @@ def main():
     global global_step
     dataset = 'ae2'
     config = './as_configs/gtea/gtea_exfm.yaml'
-    model_name = 'cf'
+    model_name = 'milnce'
     log_time = ''
 
     # parser = argparse.ArgumentParser()
@@ -72,17 +72,17 @@ def main():
                                        T=config.data.num_segments, dropout=config.network.drop_out,
                                        emb_dropout=config.network.emb_dropout, if_proj=config.network.if_proj)
     # Must set jit=False for training  ViT-B/32
-        model = ImageCLIP(model)
-        model = torch.nn.DataParallel(model).to(device)
+        model = ImageCLIP(model).to(device)
+        # model = torch.nn.DataParallel(model).to(device)
         clip.model.convert_weights(model)
-        if config.pretrain:
-            if os.path.isfile(config.pretrain):
-                print(("=> loading checkpoint '{}'".format(config.pretrain)))
-                checkpoint = torch.load(config.pretrain)
-                model.load_state_dict(checkpoint['model_state_dict'])
-                del checkpoint
-            else:
-                print(("=> no checkpoint found at '{}'".format(config.pretrain)))
+        # if config.pretrain:
+        #     if os.path.isfile(config.pretrain):
+        #         print(("=> loading checkpoint '{}'".format(config.pretrain)))
+        #         checkpoint = torch.load(config.pretrain)
+        #         model.load_state_dict(checkpoint['model_state_dict'])
+        #         del checkpoint
+        #     else:
+        #         print(("=> no checkpoint found at '{}'".format(config.pretrain)))
 
     elif model_name == 'hiervl':
         model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
@@ -131,7 +131,7 @@ def main():
     if model_name == 'clip':
         with torch.no_grad():
             for iii, (image, filename) in enumerate(tqdm(val_loader)):
-                if not os.path.exists(os.path.join(save_dir, filename[0])):
+                if 1:#not os.path.exists(os.path.join(save_dir, filename[0])):
                     if non_splt:
                         image = image.view((-1, config.data.num_frames, 3) + image.size()[-2:])
                     else:
@@ -143,15 +143,23 @@ def main():
                         image_features = model(image_inputs)
                         image_features = image_features.view(b, t, -1)
                         for bb in range(b):
-                            np.save(os.path.join(save_dir, filename[bb]), image_features[bb, :].cpu().numpy())
+                            if dataset == 'ae2':
+                                raise NotImplementedError("")
+                                # np.save(filename[0], image_features.cpu().numpy())
+                            else:
+                                np.save(os.path.join(save_dir, filename[bb]), image_features[bb, :].cpu().numpy())
                     else:
                         image_inputs = torch.split(image_input, 1024)
                         image_features = []
                         for inp in image_inputs:
                             inp = inp.to(device)
-                            image_features.append(model.encode_image(inp))
+                            image_features.append(model(inp))
                         image_features = torch.cat(image_features)
-                        np.save(os.path.join(save_dir, filename[0]), image_features.cpu().numpy())
+
+                        if dataset == 'ae2':
+                            np.save(filename[0], image_features.cpu().numpy())
+                        else:
+                            np.save(os.path.join(save_dir, filename[0]), image_features.cpu().numpy())
     else:
         print("-"*20)
         print("begun")
@@ -159,7 +167,7 @@ def main():
             for iii, (window, filename) in enumerate(tqdm(val_loader)):
                 # print(window.shape)
                 # raise Exception("xx")
-                if not os.path.exists(os.path.join(save_dir, filename[0])):
+                if 1:#not os.path.exists(os.path.join(save_dir, filename[0])):
                     window = window.to(device)
                     if non_splt :
                         window_size = 15
@@ -216,33 +224,61 @@ def main():
                         #     np.save(os.path.join(save_dir, filename[bb]), image_features[bb, :].cpu().numpy())
                     else:
                         window_size = 15
+                        if model_name == 'milnce':
+                            window_size = 16
+                            # front_pad = window_size // 2 - 1
+                            # rear_pad  = window_size // 2
+                            # first_frame = window[:, 0:1, :, :]  # Shape: [b, 1, C, H, W]
+                            # last_frame = window[:, -1:, :, :]   # Shape: [b, 1, C, H, W]
+                            # front_padding = first_frame.repeat(1, front_pad, 1, 1)
+                            # rear_padding  = last_frame.repeat(1, rear_pad, 1, 1)
+
+                            # window = torch.cat([front_padding, window, rear_padding], dim=1)
                         # [b, c*windows, t, h, w]
                         b, win_c , h, w = window.size()
                         window = window.reshape(1, -1, 3, h, w)
                         b, T_padded, c, h, w = window.shape
+                        
                         window = window.as_strided(
                             size=(b, T_padded - window_size + 1, window_size, c, h, w),  # [b, T, 21, c, h, w]
                             stride=(window.stride(0), window.stride(1), window.stride(1), window.stride(2), window.stride(3), window.stride(4))
                         )
                         window = window.reshape(-1, window_size, 3, h, w)
+                        # print(window.shape)
                         sub_batches = torch.split(window, 8, dim=0)
 
                         feature_list = []
                         for i, sb in enumerate(sub_batches):
                             sb = sb.to(device)
-                            sb_features = model(video=sb, video_only=True)
+                            if model_name == 'milnce' or model_name == 'pvrl':
+                                sb = sb.permute(0,2,1,3,4)
+                                # print(sb.shape)
+                                sb_features = model(sb)
+                                if model_name == 'milnce':
+                                    sb_features = sb_features['mixed_5c']
+                                    # print(sb_features.shape)
+                                    # print('-'*20)
+                            else:
+                                sb_features = model(data=sb, video_only=True)
+                            # print(sb_features.shape)
                             feature_list.append(sb_features)
 
                         feature = torch.stack(feature_list[:-1], dim=0)
                         b, _, c = feature.shape
                         feature = feature.reshape(-1, c)
                         feature = torch.cat((feature, feature_list[-1]), dim=0)
+                        # print(feature.shape)
+                        # print('-'*20)
                         feature = feature.permute(1,0)
 
                         if dataset == 'ae2':
                             np.save(filename[0], feature.cpu().numpy())
                         else:
                             np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())
+                else: 
+                    print (os.path.join(save_dir, filename[0]))
+                    print(filename[0])
+                    print('-'*10)
 
 if __name__ == '__main__':
     main()

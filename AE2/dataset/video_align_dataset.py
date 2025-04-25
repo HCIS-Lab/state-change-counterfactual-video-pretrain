@@ -35,9 +35,9 @@ class VideoAlignmentDataset(Dataset):
 
         self.num_steps = args.num_frames
         self.frame_stride = args.frame_stride
-        print("num_steps: ", args.num_frames)
-        print("frame_stride: ", args.frame_stride)
-        print("random_offset: ", args.random_offset)
+        # print("num_steps: ", args.num_frames)
+        # print("frame_stride: ", args.frame_stride)
+        # print("random_offset: ", args.random_offset)
         self.random_offset = args.random_offset
 
         if args.dataset in ['break_eggs', 'tennis_forehand']:
@@ -67,7 +67,7 @@ class VideoAlignmentDataset(Dataset):
     def _construct_video_path(self, dir_name):
         video_paths = []
         for item in os.listdir(dir_name):
-            if item.endswith('.mp4'):
+            if item.endswith('.npy'):
                 video_paths.append(os.path.join(dir_name, item))
         assert len(video_paths) > 1
         print(f'{len(video_paths)} videos in {dir_name}')
@@ -75,12 +75,18 @@ class VideoAlignmentDataset(Dataset):
 
     def _construct_video_path_by_mode(self, dir_name, mode):
         video_paths = []
-        f_out = open(os.path.join(dir_name, mode+'.csv'), 'r')
-        for line in f_out.readlines():
+        f_out = open(os.path.join(dir_name, mode + '.csv'), 'r')
+        for line in f_out:
             line = line.strip()
-            video_paths.append(os.path.join(dir_name, line))
+            base_name = os.path.splitext(line)[0]  # Remove .mp4
+            new_name = base_name + '_cf_epoch7.npy'
+            video_paths.append(os.path.join(dir_name, new_name))
         return video_paths
-
+    
+    def get_frames(self, file_path, frames_list):
+        x = np.load(file_path)
+        return x[:, frames_list]
+    
     def get_frames_h5py(self, h5_file_path, frames_list, bbox_list=None):
         final_frames = list()
         h5_file = h5py.File(h5_file_path, 'r')
@@ -139,18 +145,18 @@ class VideoAlignmentTrainDataset(VideoAlignmentDataset):
         seq_lens = list()
         steps = list()
         for video in selected_videos:
-            video = video[0]
+            video = video[0] # check
             video_frames_count = get_num_frames(video)
             main_frames, selected_frames = self.sample_frames(video_frames_count)
-            h5_file_name = _extract_frames_h5py(
+            # h5_file_name = _extract_frames_h5py(
+            #     video,
+            #     self.frame_save_path
+            # )
+            frames = self.get_frames(
                 video,
-                self.frame_save_path
-            )
-            frames = self.get_frames_h5py(
-                h5_file_name,
                 selected_frames,
             )
-            frames = np.array(frames)  # (64, 168, 168, 3)
+            # frames = np.array(frames)  # (64, 168, 168, 3)
             final_frames.append(
                 np.expand_dims(frames.astype(np.float32), axis=0)
             )
@@ -179,9 +185,11 @@ class VideoAlignmentDownstreamDataset(VideoAlignmentDataset):
         for video in self.video_paths1:
             video_frames_count = get_num_frames(video)
             self.video_len_list.append(video_frames_count)
-            video_name = video.replace('.mp4', '').split('/')[-1]
+            video_name = video.replace('_cf_epoch7.npy', '').split('/')[-1]
             view = video.split('/')[-2]
             labels = self.label_dict[video_name]
+            # print(np.load(video).shape,video_frames_count, len(labels))
+            # continue
             assert video_frames_count == len(labels)
             for frame_id in range(video_frames_count):
                 self.frame_path_list.append([video, frame_id, labels[frame_id]])
@@ -201,10 +209,10 @@ class VideoAlignmentDownstreamDataset(VideoAlignmentDataset):
         return len(self.frame_path_list)
 
     def __getitem__(self, idx):
-        print(self.frame_path_list[idx])
+        # print(self.frame_path_list[idx])
         video_path, frame_id, frame_label = self.frame_path_list[idx]
-        h5_file_name = _extract_frames_h5py(video_path, self.frame_save_path)
-        context_frame_id = max(0, frame_id - self.frame_stride)
-        frame = self.get_frames_h5py(h5_file_name, [context_frame_id, frame_id])
-        frame = np.array(frame).astype(np.float32)  # (2, 168, 168, 3)
+        # h5_file_name = _extract_frames_h5py(video_path, self.frame_save_path)
+        # context_frame_id = max(0, frame_id - self.frame_stride)
+        frame = self.get_frames(video_path, [frame_id]) #TODO check here
+        frame = frame.astype(np.float32)  # (2, 168, 168, 3)
         return frame, frame_label, video_path

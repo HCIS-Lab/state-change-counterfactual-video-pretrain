@@ -41,8 +41,8 @@ class VectorRegression(sklearn.base.BaseEstimator):
 def load_embeds_and_labels(save_path):
     train_embs = np.load(f'{save_path}/train_embeds.npy')
     train_labels = np.load(f'{save_path}/train_label.npy')
-    val_embs = np.load(f'{save_path}/val_embeds.npy')
-    val_labels = np.load(f'{save_path}/val_label.npy')
+    val_embs = np.load(f'{save_path}/test_embeds.npy')
+    val_labels = np.load(f'{save_path}/test_label.npy')
     return train_embs, train_labels, val_embs, val_labels
 
 

@@ -19,51 +19,77 @@ def video_to_frames(input_loc, output_loc):
     # Start capturing the feed
     cap = cv2.VideoCapture(input_loc)
     # Find the number of frames
-    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
-    print ("Number of frames: ", video_length)
+    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) #-1
+    # print ("Number of frames: ", video_length)
     count = 0
-    print ("Converting video...")
+    # print ("Converting video...")
     # Start converting the video
     while cap.isOpened():
         # Extract the frame
         ret, frame = cap.read()
         if not ret:
-            continue
+            break
+            # continue
         # Write the results back to output location.
         cv2.imwrite(output_loc + "/img_%#05d.jpg" % (count+1), frame)
         count = count + 1
         # If there are no more frames left
-        if (count > (video_length-1)):
-            # Log the time again
-            time_end = time.time()
-            # Release the feed
-            cap.release()
-            # Print stats
-            print ("Done extracting frames.\n%d frames extracted" % count)
-            print ("It took %d seconds for conversion." % (time_end-time_start))
-            break
+        # if (count > (video_length-1)):
+        #     # Log the time again
+        #     time_end = time.time()
+        #     # Release the feed
+        #     cap.release()
+        #     # Print stats
+        #     print ("Done extracting frames.\n%d frames extracted" % count)
+        #     # print ("It took %d seconds for conversion." % (time_end-time_start))
+        #     break
+    cap.release()
+    # Print stats
+    print ("Done extracting frames.\n%d frames extracted" % count)
+    
+def save_last_frame(input_loc, output_loc):
+    cap = cv2.VideoCapture(input_loc)
+    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    print("Number of frames: ", video_length)
+
+    # Set position to the last frame (index is zero-based)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, video_length - 1)
+
+    ret, frame = cap.read()
+    if ret:
+        cv2.imwrite(output_loc + "/img_%#05d.jpg" % (video_length), frame)
+        print("Saved last frame.")
+    else:
+        print("Could not read the last frame.")
+
+    cap.release()
 
 if __name__ == "__main__":
-    inputs = ["/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/train/ego",
-              "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/train/exo",
+    inputs = [
+    # "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/train/ego",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/train/exo",
 
-            #   "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/train/ego",
-            #   "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/train/exo",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/train/ego",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/train/exo",
 
-            #   "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/test/ego",
-            #   "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/test/exo",
-            #   "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/val/ego",
-            #   "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/val/exo",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/test/ego",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/test/exo",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/val/ego",
+    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/val/exo",
 
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/test/ego",
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/test/exo",
+
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/val/ego",
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/val/exo",
 
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/ego",
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/exo",
+
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/ego",
     #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/exo",
+              "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/break_eggs/ego", 
+              "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/break_eggs/exo",
               ]
     
     for input_folder in inputs:    
@@ -74,3 +100,4 @@ if __name__ == "__main__":
                 video_name = os.path.splitext(filename)[0]
                 output_path = os.path.join(input_folder, video_name + '_frames')
                 video_to_frames(video_path, output_path)
+                # save_last_frame(video_path, output_path)

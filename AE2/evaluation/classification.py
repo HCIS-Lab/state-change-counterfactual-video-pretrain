@@ -24,18 +24,18 @@ def classification(save_path, train_video_ego_id, val_video_ego_id):
     train_embs, train_labels, val_embs, val_labels = load_embeds_and_labels(save_path)
     regular_f1 = fit_svm_model(train_embs, train_labels, val_embs, val_labels, cal_f1_score=True)
 
-    train_ego_idx = np.array(train_video_ego_id) == 1
-    train_exo_idx = np.array(train_video_ego_id) == 0
-    val_ego_idx = np.array(val_video_ego_id) == 1
-    val_exo_idx = np.array(val_video_ego_id) == 0
-    print(f'train: ego frames {np.sum(train_ego_idx)}, exo frames {np.sum(train_exo_idx)} | '
-          f'val: ego frames {np.sum(val_ego_idx)}, exo frames {np.sum(val_exo_idx)}')
-    ego2exo_val_f1 = fit_svm_model(train_embs[train_ego_idx], train_labels[train_ego_idx],
-                                val_embs[val_exo_idx], val_labels[val_exo_idx], cal_f1_score=True)
-    exo2ego_val_f1 = fit_svm_model(train_embs[train_exo_idx], train_labels[train_exo_idx],
-                                val_embs[val_ego_idx], val_labels[val_ego_idx], cal_f1_score=True)
+    # train_ego_idx = np.array(train_video_ego_id) == 1
+    # train_exo_idx = np.array(train_video_ego_id) == 0
+    # val_ego_idx = np.array(val_video_ego_id) == 1
+    # val_exo_idx = np.array(val_video_ego_id) == 0
+    # print(f'train: ego frames {np.sum(train_ego_idx)}, exo frames {np.sum(train_exo_idx)} | '
+    #       f'val: ego frames {np.sum(val_ego_idx)}, exo frames {np.sum(val_exo_idx)}')
+    # ego2exo_val_f1 = fit_svm_model(train_embs[train_ego_idx], train_labels[train_ego_idx],
+    #                             val_embs[val_exo_idx], val_labels[val_exo_idx], cal_f1_score=True)
+    # exo2ego_val_f1 = fit_svm_model(train_embs[train_exo_idx], train_labels[train_exo_idx],
+    #                             val_embs[val_ego_idx], val_labels[val_ego_idx], cal_f1_score=True)
 
-    return regular_f1, ego2exo_val_f1, exo2ego_val_f1
+    return regular_f1, 0.0, 0.0
 
 
 def select_frame_indices(video_len_list, k, random_seed):
