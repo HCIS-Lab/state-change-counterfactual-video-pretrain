@@ -4,8 +4,8 @@ from collections import OrderedDict
 # from fvcore.common.registry import Registry
 import argparse
 from pvrl_defaults import get_cfg
-# import sys
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from lib.models import vit 
 
 # adapted from https://github.com/facebookresearch/ProcedureVRL/tree/main#zero-shot-inference
@@ -127,6 +127,7 @@ def load_pvrl(model_path):
     """
     args = parse_args()
     cfg = load_config(args)
+    cfg.DEV.TEST_LANG_EMB = "as_utils/data/clip_step_emb_coin.pth"
 
     # Construct the model
     model = vit.vit_base_patch16_224_develop(cfg)

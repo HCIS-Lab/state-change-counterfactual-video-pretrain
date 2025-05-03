@@ -1,9 +1,9 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates. All Rights Reserved.
 DEV:
   ENABLE: True
-  TEST_LANG_EMB: './data/clip_step_emb_coin.pth' # used for dim check
+  TEST_LANG_EMB: 'as_utils/data/clip_step_emb_coin.pth' # used for dim check
 TRAIN:
-  ENABLE: True
+  ENABLE: False
   DATASET: howto100m_develop
   BATCH_SIZE: 16 # per machine node
   EVAL_PERIOD: 3

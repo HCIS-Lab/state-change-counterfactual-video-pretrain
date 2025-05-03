@@ -20,8 +20,10 @@ def classification(dataset):
     train_embs, train_labels = load_data(dataset=dataset, mode='train', ego_only=False, exo_only=False)
     val_embs, val_labels = load_data(dataset=dataset, mode='val', ego_only=False, exo_only=False)
     test_embs, test_labels = load_data(dataset=dataset, mode='test', ego_only=False, exo_only=False)    
-    te = np.concatenate([test_embs, val_embs], axis=0)
-    tl = np.concatenate([test_labels, val_labels], axis=0)
+    # te = np.concatenate([test_embs, val_embs], axis=0)
+    # tl = np.concatenate([test_labels, val_labels], axis=0)
+    te=test_embs
+    tl=test_labels
 
     regular_f1 = fit_svm_model(train_embs, train_labels, te, tl, cal_f1_score=True)
     del train_embs, train_labels, val_embs, val_labels, test_embs, test_labels, te, tl
@@ -30,8 +32,10 @@ def classification(dataset):
     train_embs, train_labels = load_data(dataset=dataset, mode='train', ego_only=True, exo_only=False)
     val_embs, val_labels = load_data(dataset=dataset, mode='val', ego_only=False, exo_only=True)
     test_embs, test_labels = load_data(dataset=dataset, mode='test', ego_only=False, exo_only=True)
-    te = np.concatenate([test_embs, val_embs], axis=0)
-    tl = np.concatenate([test_labels, val_labels], axis=0)
+    # te = np.concatenate([test_embs, val_embs], axis=0)
+    # tl = np.concatenate([test_labels, val_labels], axis=0)
+    te=test_embs
+    tl=test_labels
 
     ego2exo_F1 = fit_svm_model(train_embs, train_labels, te, tl, cal_f1_score=True)
     del train_embs, train_labels, val_embs, val_labels, test_embs, test_labels, te, tl
@@ -40,8 +44,10 @@ def classification(dataset):
     train_embs, train_labels = load_data(dataset=dataset, mode='train', ego_only=False, exo_only=True)
     val_embs, val_labels = load_data(dataset=dataset, mode='val', ego_only=True, exo_only=False)
     test_embs, test_labels = load_data(dataset=dataset, mode='test', ego_only=True, exo_only=False)
-    te = np.concatenate([test_embs, val_embs], axis=0)
-    tl = np.concatenate([test_labels, val_labels], axis=0)
+    # te = np.concatenate([test_embs, val_embs], axis=0)
+    # tl = np.concatenate([test_labels, val_labels], axis=0)
+    te=test_embs
+    tl=test_labels
 
     exo2ego_F1 = fit_svm_model(train_embs, train_labels, te, tl, cal_f1_score=True)
     del train_embs, train_labels, val_embs, val_labels, test_embs, test_labels, te, tl
@@ -50,8 +56,10 @@ def classification(dataset):
     train_embs, train_labels = load_data(dataset=dataset, mode='train', ego_only=True, exo_only=False)
     val_embs, val_labels = load_data(dataset=dataset, mode='val', ego_only=True, exo_only=False)
     test_embs, test_labels = load_data(dataset=dataset, mode='test', ego_only=True, exo_only=False)
-    te = np.concatenate([test_embs, val_embs], axis=0)
-    tl = np.concatenate([test_labels, val_labels], axis=0)
+    # te = np.concatenate([test_embs, val_embs], axis=0)
+    # tl = np.concatenate([test_labels, val_labels], axis=0)
+    te=test_embs
+    tl=test_labels
 
     ego_onlyF1 = fit_svm_model(train_embs, train_labels, te, tl, cal_f1_score=True)
     del train_embs, train_labels, val_embs, val_labels, test_embs, test_labels, te, tl
@@ -60,21 +68,21 @@ def classification(dataset):
 
 def load_data(dataset, mode, ego_only, exo_only):
     if not ego_only and not ego_only:
-        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_milnce.npy")
-        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_milnce.npy")
+        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds.npy")
+        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label.npy")
     elif not ego_only and exo_only:
-        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_exoOnly_milnce.npy")
-        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_exoOnly_milnce.npy")
+        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_exoOnly.npy")
+        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_exoOnly.npy")
     elif ego_only and not exo_only:
-        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_egoOnly_milnce.npy")
-        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_egoOnly_milnce.npy")
+        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_egoOnly.npy")
+        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_egoOnly.npy")
     else:
         raise NotImplementedError("This mode is not available yet.")
     
     return embeds, labels
 
 def main():
-    print("milnce")
+    print("ours")
 
     sets = ["break_eggs", "pour_milk", "pour_liquid", "tennis_forehand"]
     avgs = {"ego_and_exo": [], "ego2exo": [], "exo2ego":[], "ego_only": []}

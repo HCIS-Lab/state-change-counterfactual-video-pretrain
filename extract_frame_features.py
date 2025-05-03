@@ -1,6 +1,6 @@
 import os
 import torch.nn as nn
-from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES, AE2_FRAMES
+from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES, AE2_FRAMES, PCA_EGOPROCEL_FRAMES
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import argparse
@@ -20,9 +20,9 @@ from as_utils.load_pvrl import *
 import clip
 import numpy as np
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "4,5"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-device = "cuda" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
+device = "cuda:1" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
 
 # sbatch -A r01220 -p gpu extract_feats.sh
 class ImageCLIP(nn.Module):
@@ -37,9 +37,9 @@ def main():
     # global args, best_prec1
     global best_prec1
     global global_step
-    dataset = 'ae2'
+    dataset = 'pc_assembly'
     config = './as_configs/gtea/gtea_exfm.yaml'
-    model_name = 'milnce'
+    model_name = 'cf'
     log_time = ''
 
     # parser = argparse.ArgumentParser()
@@ -108,8 +108,10 @@ def main():
 
     if dataset == 'breakfast':
         val_data = Breakfast_FRAMES(transforms=transform_val)
-    if dataset == 'ae2':
+    elif dataset == 'ae2':
         val_data = AE2_FRAMES(transform=transform_val)
+    elif dataset == 'pc_assembly':
+        val_data = PCA_EGOPROCEL_FRAMES(transform=transform_val)
     elif dataset == 'gtea':
         val_data = GTEA_FRAMES(transform=transform_val)
     elif dataset == 'salads':
@@ -123,7 +125,7 @@ def main():
 
     save_dir = config.data.save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
-    if dataset == 'gtea' or dataset == 'ae2':
+    if dataset == 'gtea' or dataset == 'ae2' or dataset == 'pc_assembly':
         non_splt = False
     else:
         non_splt = True
@@ -211,7 +213,7 @@ def main():
                         feature = feature.reshape(b, config.data.num_frames, -1)
                         feature = feature.permute(0,2,1)
                         
-                        if dataset == 'ae2':
+                        if dataset == 'ae2' or dataset == 'pc_assembly':
                             for bb in range(b):
                                 np.save(filename[bb], feature[bb, :].cpu().numpy())
                         else:
@@ -259,7 +261,8 @@ def main():
                                     # print(sb_features.shape)
                                     # print('-'*20)
                             else:
-                                sb_features = model(data=sb, video_only=True)
+                                sb_features = model(video=sb, video_only=True)
+                                # sb_features = model(data=sb, video_only=True) # for hiervl
                             # print(sb_features.shape)
                             feature_list.append(sb_features)
 
@@ -271,7 +274,7 @@ def main():
                         # print('-'*20)
                         feature = feature.permute(1,0)
 
-                        if dataset == 'ae2':
+                        if dataset == 'ae2' or dataset == 'pc_assembly':
                             np.save(filename[0], feature.cpu().numpy())
                         else:
                             np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())

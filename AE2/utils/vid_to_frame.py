@@ -28,8 +28,9 @@ def video_to_frames(input_loc, output_loc):
         # Extract the frame
         ret, frame = cap.read()
         if not ret:
-            break
-            # continue
+            print("breaking")
+            # break
+            continue
         # Write the results back to output location.
         cv2.imwrite(output_loc + "/img_%#05d.jpg" % (count+1), frame)
         count = count + 1
@@ -65,39 +66,15 @@ def save_last_frame(input_loc, output_loc):
     cap.release()
 
 if __name__ == "__main__":
-    inputs = [
-    # "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/train/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/train/exo",
+    parent_folder = '/nfs/wattrel/data/md0/datasets/EgoProceL/videos/pc_disassembly'  # <-- change this to your top folder
 
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/train/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/train/exo",
-
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/test/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/test/exo",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/val/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_liquid/val/exo",
-
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/test/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/test/exo",
-
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/val/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/pour_milk/val/exo",
-
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/exo",
-
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/ego",
-    #           "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/tennis_forehand/exo",
-              "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/break_eggs/ego", 
-              "/nfs/wattrel/data/md0/datasets/AE2/AE2_data/break_eggs/exo",
-              ]
-    
-    for input_folder in inputs:    
-        print(input_folder)
-        for filename in os.listdir(input_folder):
-            if filename.lower().endswith(".mp4"):
-                video_path = os.path.join(input_folder, filename)
+    for root, dirs, files in os.walk(parent_folder):
+        for filename in files:
+            if filename.lower().endswith((".mp4", ".avi")):
+                video_path = os.path.join(root, filename)
                 video_name = os.path.splitext(filename)[0]
-                output_path = os.path.join(input_folder, video_name + '_frames')
-                video_to_frames(video_path, output_path)
+                output_path = os.path.join(root, video_name + '_frames')
+                if not os.path.exists(output_path):
+                    print(f"Processing: {video_path}")
+                    video_to_frames(video_path, output_path)
                 # save_last_frame(video_path, output_path)
