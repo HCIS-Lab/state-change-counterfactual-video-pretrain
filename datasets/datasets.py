@@ -454,7 +454,7 @@ class PCA_EGOPROCEL_FRAMES(data.Dataset):
     def __init__(self,
                  small_test=False,
                  transform=None,
-                 sliding_window=15):
+                 sliding_window=16):
         self.small_test = small_test
         self.transform = transform
         self.sliding_window = sliding_window
@@ -477,11 +477,13 @@ class PCA_EGOPROCEL_FRAMES(data.Dataset):
 
         # Apply sliding window extension if requested
         if self.sliding_window:
-            padding = (self.sliding_window - 1) // 2
+            # padding = (self.sliding_window - 1) // 2
+            padding = (self.sliding_window) // 2
+            padding0 = (self.sliding_window - 1) // 2
 
             # Extend window backward and forward
             available_start_idx = max(0, start_idx - padding)
-            available_end_idx = min(len(path_list), end_idx + padding)
+            available_end_idx = min(len(path_list), end_idx + padding0)
 
             path_list1 = path_list[available_start_idx:available_end_idx]
             seq = [Image.open(os.path.join(vroot, p)).convert('RGB') for p in path_list1]
@@ -490,8 +492,8 @@ class PCA_EGOPROCEL_FRAMES(data.Dataset):
             if start_idx - padding < 0:
                 num_pad = padding - start_idx
                 seq = [seq[0]] * num_pad + seq
-            if end_idx + padding > len(path_list):
-                num_pad = (end_idx + padding) - len(path_list)
+            if end_idx + padding0 > len(path_list):
+                num_pad = (end_idx + padding0) - len(path_list)
                 seq = seq + [seq[-1]] * num_pad
         else:
             path_list1 = path_list[start_idx:end_idx]
