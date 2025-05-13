@@ -9,3 +9,4 @@ from .data_loader import *
 from .EgoClip_CF import *
 from .transforms import *
 from .EgoAggregation_dataset import *
+from .CharadesEgo_dataset import *
