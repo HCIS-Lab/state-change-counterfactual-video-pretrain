@@ -21,13 +21,11 @@ Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data pr
 
 ### Downstream tasks
 
-GTEA: [link]. 
+GTEA: Please follow [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt) to download the raw video and then extract frames from videos.
 
 EgoPRE: Link.
 
-EpicKitchen:
-
-Charades-Ego:
+EpicKitchen & Charades-Ego: Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data preparation.
 
 AE2:
 
@@ -46,7 +44,7 @@ python video_level_cf.py
 ```
 
 
-## Generate Text Features from FLAVA
+## Generate Text Features with FLAVA
 
 ## Pretraining
 
