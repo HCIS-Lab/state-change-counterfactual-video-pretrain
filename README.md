@@ -1,6 +1,6 @@
 # What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning
 
-Official code of [What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning]([https://openaccess.thecvf.com/content/CVPR2023/html/Ashutosh_HierVL_Learning_Hierarchical_Video-Language_Embeddings_CVPR_2023_paper.html](https://arxiv.org/abs/2503.21055)), ICCV 2025.
+Official code of [What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning](https://arxiv.org/abs/2503.21055), ICCV 2025.
 
 ## Installation
 
