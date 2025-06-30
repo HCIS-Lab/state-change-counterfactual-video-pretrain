@@ -70,8 +70,6 @@ The parameters of the SLURM job can be changed in the trainer.sh script. We use 
 
 The pretraining checkpoint is available [here]().
 
-## Configs for Baseline and Ablations
-
 
 ## Downstream Task Training
 
@@ -121,12 +119,10 @@ If you use the code or the method, please cite the following paper:
 
 ## Acknowledgement
 
-The pretraining and Chrades-Ego, EPIC-KITCHENS finetuning codebase is based on [EgoVLP](https://github.com/showlab/EgoVLP) and repository. 
+The pretraining and Chrades-Ego, EPIC-KITCHENS test codebase is based on [EgoVLP](https://github.com/showlab/EgoVLP) and [HierVL](https://github.com/facebookresearch/HierVL). 
 
-The feature extraction code is adapted from [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt)
+The feature extraction code is adapted from [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt).
 
-The temporal action segmentation code is adapted from [ASFormer](https://github.com/ChinaYi/ASFormer)
+The temporal action segmentation code is adapted from [ASFormer](https://github.com/ChinaYi/ASFormer).
 
 The action phase recognition and frame retrieval code is adapted from [AE2]()
-
-We thank the authors and maintainers of these codebases.
