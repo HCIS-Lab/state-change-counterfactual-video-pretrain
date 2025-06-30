@@ -1,14 +1,6 @@
-# HierVL: Learning Hierarchical Video-Language Embeddings
+# What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning
 
-Official code of [HierVL: Learning Hierarchical Video-Language Embeddings](https://openaccess.thecvf.com/content/CVPR2023/html/Ashutosh_HierVL_Learning_Hierarchical_Video-Language_Embeddings_CVPR_2023_paper.html), CVPR 2023.
-
-[Project page](https://vision.cs.utexas.edu/projects/hiervl/) | [arXiv](https://arxiv.org/abs/2301.02311)
-
-![Teaser](teaser/teaser.png)
-
-## Introduction
-
-HierVL is a novel hierarchical video-language embedding that simultaneously accounts for both long-term and short-term associations. We pretrain on Ego4D narrations and summaries and also transfer the representations to Charades-Ego, EPIC-KITCHENS and HowTo100M.
+Official code of [What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning]([https://openaccess.thecvf.com/content/CVPR2023/html/Ashutosh_HierVL_Learning_Hierarchical_Video-Language_Embeddings_CVPR_2023_paper.html](https://arxiv.org/abs/2503.21055)), ICCV 2025.
 
 ## Installation
 
@@ -16,16 +8,16 @@ To create a conda enviornment with the required dependencies, run the following 
 
 ```bash
 conda env create -f environment.yml
-source activate hiervl
+source activate cf
 ```
 
 ## Dataset Preparation
 
 Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data preparation. We use the downsampled and chunked video outputs as the input to our method (output from `utils/video_chunk.py`). For summary sentences, we provide the processed summary and narration hierarchy [here](https://dl.fbaipublicfiles.com/hiervl/summary_clips_hierarchy_full.json). The used `egosummary_full.csv` is available [here](https://dl.fbaipublicfiles.com/hiervl/egosummary_full.csv).
 
-## Setting Correct Paths
+## Generate State Changes and Their Counterfactuals with Llama
 
-All the references to the datasets must be set correctly to run the codes. To help this process, we have replaced all the paths with a suitable string and documented it in [PATHS](PATHS). Use `git grep path` to find all the occurences of that filepath and replace it with your processed path.
+## Generate Text Features from FLAVA
 
 ## Pretraining
 
@@ -95,28 +87,31 @@ Remember to use the released finetuned checkpoint [here](https://dl.fbaipublicfi
 
 Please open an issue in this repository (preferred for better visibility) or reach out to [kumar.ashutosh@utexas.edu](mailto:kumar.ashutosh@utexas.edu).
 
-## Contributing
-
-See the [CONTRIBUTING](CONTRIBUTING.md) file for how to help out.
 
 ## Citation
 
 If you use the code or the method, please cite the following paper:
 
 ```bibtek
-@InProceedings{Ashutosh_2023_CVPR,
-    author    = {Ashutosh, Kumar and Girdhar, Rohit and Torresani, Lorenzo and Grauman, Kristen},
-    title     = {HierVL: Learning Hierarchical Video-Language Embeddings},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month     = {June},
-    year      = {2023},
-    pages     = {23066-23078}
+@InProceedings{counterfacutal_ICCV_2025,
+    author    = {Kung, Chi-Hsi and Ramirez, Frangil and Ha, Juhyung and Chen, Yi-Ting and Crandall, David and Tsai, Yi-Hsuan},
+    title     = {What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning
+},
+    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+    month     = {October},
+    year      = {2025},
 }
 ```
 
 ## Acknowledgement
 
-The pretraining and Chrades-Ego, EPIC-KITCHENS finetuning codebase is based on [EgoVLP](https://github.com/showlab/EgoVLP) repository. Ego4D LTA is based on [Ego4D Baseline Code](https://github.com/EGO4D/forecasting). We thank the authors and maintainers of these codebases.
+The pretraining and Chrades-Ego, EPIC-KITCHENS finetuning codebase is based on [EgoVLP](https://github.com/showlab/EgoVLP) and repository. 
+
+The temporal action segmentation code is adapted from [ASFormer](https://github.com/ChinaYi/ASFormer)
+
+The action phase recognition and frame retrieval code is adapted from [AE2]()
+
+We thank the authors and maintainers of these codebases.
 
 ## License
 
