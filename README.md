@@ -13,7 +13,21 @@ source activate cf
 
 ## Dataset Preparation
 
+(Pre-training) Ego4D/EgoClip
+
 Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data preparation. We use the downsampled and chunked video outputs as the input to our method (output from `utils/video_chunk.py`). For summary sentences, we provide the processed summary and narration hierarchy [here](https://dl.fbaipublicfiles.com/hiervl/summary_clips_hierarchy_full.json). The used `egosummary_full.csv` is available [here](https://dl.fbaipublicfiles.com/hiervl/egosummary_full.csv).
+
+(Downstream tasks)
+
+GTEA: [link]. 
+
+EgoPRE: Link.
+
+EpicKitchen:
+
+Charades-Ego:
+
+AE2:
 
 ## Generate State Changes and Their Counterfactuals with Llama
 
@@ -54,38 +68,34 @@ Change the following flags to run the baselines and ablations
 
 ## Downstream Task Training
 
-To run the downstream tasks, modify the `trainer.sh` commands with the following flags
+### Temporal Action Segmentation
 
-- `--experiment charades --config configs/ft/charades.json` for Charages-Ego Action Classification downstream training
-- `--experiment epic_mir --config configs/ft/epic.json` for EPIC-KITCHENS-100 MIR downstream training
-- `--experiment howto100m --config configs/ft/howto100m.json` for HowTo100M long video classification
+### Error Detection
+
+### AE2 Action Phase Recognition
 
 ## Downstream Task Testing
 
-### Charades-Ego Action Classification
+### Temporal Action Segmentation
+
+### Error Detection
+
+### EpicKitchen-100 Zero-Shot Multi-Instance Retrieval
+
+```python
+python run/test_epic.py
+```
+
+### Charades-Ego Zero-Shot Action Classification
+
+### AE2 Zero-Shot Action Phase Frame Retrieval
+
 
 To test the performance, run
 
 ```python
 python run/test_charades.py
 ```
-
-Remember to use the released finetuned checkpoint [here](https://dl.fbaipublicfiles.com/hiervl/charades_hievl_sa.pth) or zero-shot checkpoint [here](https://dl.fbaipublicfiles.com/hiervl/hievl_sa_2.pth).
-
-### EPIC-KITCHENS-100 Multi-Instance Retrieval
-
-To test the performance, run
-
-```python
-python run/test_epic.py
-```
-
-Remember to use the released finetuned checkpoint [here](https://dl.fbaipublicfiles.com/hiervl/epic_hievl_sa.pth) or zero-shot checkpoint [here](https://dl.fbaipublicfiles.com/hiervl/hievl_sa.pth).
-
-
-## Issues
-
-Please open an issue in this repository (preferred for better visibility) or reach out to [kumar.ashutosh@utexas.edu](mailto:kumar.ashutosh@utexas.edu).
 
 
 ## Citation
@@ -106,6 +116,8 @@ If you use the code or the method, please cite the following paper:
 ## Acknowledgement
 
 The pretraining and Chrades-Ego, EPIC-KITCHENS finetuning codebase is based on [EgoVLP](https://github.com/showlab/EgoVLP) and repository. 
+
+The feature extraction code is adapted from [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt)
 
 The temporal action segmentation code is adapted from [ASFormer](https://github.com/ChinaYi/ASFormer)
 
