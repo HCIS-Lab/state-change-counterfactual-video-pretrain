@@ -33,8 +33,8 @@ class EgoAggregation(TextVideoDataset):
         self.verb_dim = 118  # num of verbs of ego4d taxonomy dictionary
 
         if self.split == 'train':
-            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
-            # self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',on_bad_lines='skip')
+            # self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',error_bad_lines=False)
+            self.metadata = pd.read_csv(os.path.join(self.meta_dir, target_split_fp), sep='\t',on_bad_lines='skip')
             self.frame_sample = 'rand'
             with open(os.path.join(self.meta_dir, 'updated_summary_cf.json'), "r") as json_file:
                 self.cf_metadata = json.load(json_file)
@@ -186,8 +186,7 @@ class EgoAggregation(TextVideoDataset):
         filename =  "".join(x for x in narration if x.isalnum())
         if filename[0].isnumeric():
             filename = '_' + filename
-        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
-        # symlink_dir = "/N/project/ego4d_vlm/language_extraction/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
+        symlink_dir = "/path to/language_features/embeddings_FLAVA" # make this a self.symlink_dir on init function
 
         features_path = os.path.join(symlink_dir, filename + '.npy')
         features = np.load(features_path, allow_pickle=True)
@@ -208,8 +207,8 @@ class EgoAggregation(TextVideoDataset):
         if filename[0].isnumeric():
             filename = '_' + filename
         embed_dir = "language_features/summary_embeddings_FLAVA"
-        symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
-        # symlink_dir = "/N/project/ego4d_vlm/language_extraction/"
+        # symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
+        symlink_dir = "path to/language_extraction/"
         
         temp = os.path.join(embed_dir, filename)[:245] + '.npy'
         features_path = os.path.join(symlink_dir, temp)
