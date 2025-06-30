@@ -68,7 +68,7 @@ The parameters of the SLURM job can be changed in the trainer.sh script. We use 
 
 ## Pretraining Checkpoint
 
-The pretraining checkpoint is available [here]().
+The pretraining checkpoint is available [here](https://drive.google.com/drive/folders/1fNGuHmyzqygvgbvvE07GylB90kt-NlTi).
 
 
 ## Downstream Task Training
