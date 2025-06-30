@@ -234,7 +234,7 @@ class Sentence_Embedding(nn.Module):
 
     def forward(self, x):
         x = self._words_to_ids(x)
-        x = self.word_embd(x)
+        x = self.word_embd(x.cuda())
         x = F.relu(self.fc1(x))
         x = th.max(x, dim=1)[0]
         x = self.fc2(x)

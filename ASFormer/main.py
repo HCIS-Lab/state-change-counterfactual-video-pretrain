@@ -24,9 +24,11 @@ parser.add_argument('--dataset', default="50salads")
 parser.add_argument('--split', default='1')
 parser.add_argument('--model_dir', default='models')
 parser.add_argument('--result_dir', default='results')
+parser.add_argument('--path', default=None)
 
 args = parser.parse_args()
- 
+
+
 num_epochs = 120
 
 lr = 0.0005
@@ -71,6 +73,9 @@ if args.dataset == 'breakfast':
     features_path = features_path + 'combined_feat/'
 gt_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/groundTruth/"
  
+if args.path !=None:
+    args.path =  os.path.join('models', args.feature, args.dataset, 'split_'+args.split, 'epoch-'+str(args.path)+'.model')
+
 mapping_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/mapping.txt"
  
 model_dir = os.path.join("models", args.feature, args.dataset, "split_"+args.split)
@@ -99,7 +104,7 @@ if args.action == "train":
     batch_gen_tst = BatchGenerator(num_classes, actions_dict, gt_path, features_path, sample_rate)
     batch_gen_tst.read_data(vid_list_file_tst)
 
-    trainer.train(model_dir, batch_gen, num_epochs, bz, lr, batch_gen_tst)
+    trainer.train(model_dir, batch_gen, num_epochs, bz, lr, batch_gen_tst, args.path)
 
 if args.action == "predict":
     batch_gen_tst = BatchGenerator(num_classes, actions_dict, gt_path, features_path, sample_rate)

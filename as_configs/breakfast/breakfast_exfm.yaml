@@ -3,14 +3,14 @@ seed: 1024
 data:
     dataset: breakfast
     modality: RGB
-    num_frames: 32
+    num_frames: 15
     seg_length: 1
     split: 1
-    batch_size: 64
+    batch_size: 1
     workers: 0
     gpus: 4
     num_classes: 48
-    save_dir: "./data/breakfast/features_dir/breakfast_vit_acti_ls"
+    save_dir: "path/breakfast/cf_split1"
     index_bias: 1
     input_size: 224
     randaug:
