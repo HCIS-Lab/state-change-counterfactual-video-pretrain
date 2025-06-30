@@ -206,8 +206,7 @@ class EgoAggregation(TextVideoDataset):
         filename =  "".join(x for x in narration if x.isalnum())
         if filename[0].isnumeric():
             filename = '_' + filename
-        embed_dir = "language_features/summary_embeddings_FLAVA"
-        # symlink_dir = "/nfs/wattrel/data/md0/datasets/state_aware/language_extraction"
+        embed_dir = "path to /language_features/summary_embeddings_FLAVA"
         symlink_dir = "path to/language_extraction/"
         
         temp = os.path.join(embed_dir, filename)[:245] + '.npy'

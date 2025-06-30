@@ -1,6 +1,6 @@
 import os
 import torch.nn as nn
-from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES, AE2_FRAMES, PCA_EGOPROCEL_FRAMES
+from datasets import Breakfast_FRAMES, GTEA_FRAMES, SALADS_FRAMES, AE2_FRAMES
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import argparse
@@ -17,14 +17,12 @@ from as_utils.load_cf import *
 from as_utils.load_milnce import *
 from as_utils.load_pvrl import *
 
+
 import clip
 import numpy as np
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
-device = "cuda:1" if torch.cuda.is_available() else "cpu"  # If using GPU then use mixed precision training.
-
-# sbatch -A r01220 -p gpu extract_feats.sh
 class ImageCLIP(nn.Module):
     def __init__(self, model):
         super(ImageCLIP, self).__init__()
@@ -37,18 +35,10 @@ def main():
     # global args, best_prec1
     global best_prec1
     global global_step
-    dataset = 'pc_assembly'
+    dataset = 'gtea'
     config = './as_configs/gtea/gtea_exfm.yaml'
     model_name = 'cf'
     log_time = ''
-
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--config', '-cfg', default='./as_configs/breakfast/breakfast_exfm.yaml')
-    # parser.add_argument('--log_time', default='')
-    # parser.add_argument('--dataset', default='breakfast')
-    # parser.add_argument('--model', default='hiervl')
-    # args = parser.parse_args()
-
 
     with open(config, 'r') as f:
         config = yaml.safe_load(f)
@@ -71,38 +61,21 @@ def main():
         model, clip_state_dict = clip.load(config.network.arch, device=device, jit=False, tsm=config.network.tsm,
                                        T=config.data.num_segments, dropout=config.network.drop_out,
                                        emb_dropout=config.network.emb_dropout, if_proj=config.network.if_proj)
-    # Must set jit=False for training  ViT-B/32
         model = ImageCLIP(model).to(device)
-        # model = torch.nn.DataParallel(model).to(device)
         clip.model.convert_weights(model)
-        # if config.pretrain:
-        #     if os.path.isfile(config.pretrain):
-        #         print(("=> loading checkpoint '{}'".format(config.pretrain)))
-        #         checkpoint = torch.load(config.pretrain)
-        #         model.load_state_dict(checkpoint['model_state_dict'])
-        #         del checkpoint
-        #     else:
-        #         print(("=> no checkpoint found at '{}'".format(config.pretrain)))
 
     elif model_name == 'hiervl':
-        model = load_hiervl("/nfs/wattrel/data/md0/datasets/state_aware/pretrained/hievl_sa.pth")
+        model = load_hiervl("path to/hievl_sa.pth")
         model = model.to(device)
     elif model_name == 'cf':
-        model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0226_23_46_03/ckpt_18b_1e5_epoch7_correct.pth")
-        # /nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831
-        # /N/project/ego4d_vlm/state-aware-video-pretrain/experiments/a_2e5_2025-02-16_20_51_14/results/EgoClip_4f/models/4362317/checkpoint-epoch3.pth
-        # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/a_2e5_2nd_2025-02-21_13_53_56/results/EgoClip_4f/models/4391831/checkpoint-epoch6.pth")
-        # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0225_12_21_14/cf_7e6_16b_epoch5.pth")
-        #model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
-        # model = load_cf("/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0215_22:03:20/checkpoint-epoch9.pth")
-        model = model.to(device)
+        model = load_cf("path to/egoCF_release_epoch7.pth")
+        model = model.cuda()
     elif model_name == 'pvrl':
-        model = load_pvrl("/nfs/wattrel/data/md0/datasets/state_aware/pvrl/model_epoch_00025.pyth")
-        model = model.to(device)
-        # model = load_pvrl("/N/project/ego4d_vlm/ProcedureVRL/data/clip_step_emb_coin.pth")
+        model = load_pvrl("path to/pvrl/model_epoch_00025.pyth")
+        model = model.cuda()
     elif model_name == 'milnce':
         model = load_milnce()
-        model = torch.nn.DataParallel(model).to(device)
+        model = model.cuda()
 
     transform_val = get_augmentation(False, config)
 
@@ -110,8 +83,6 @@ def main():
         val_data = Breakfast_FRAMES(transforms=transform_val)
     elif dataset == 'ae2':
         val_data = AE2_FRAMES(transform=transform_val)
-    elif dataset == 'pc_assembly':
-        val_data = PCA_EGOPROCEL_FRAMES(transform=transform_val)
     elif dataset == 'gtea':
         val_data = GTEA_FRAMES(transform=transform_val)
     elif dataset == 'salads':
@@ -125,7 +96,7 @@ def main():
 
     save_dir = config.data.save_dir
     Path(save_dir).mkdir(parents=True, exist_ok=True)
-    if dataset == 'gtea' or dataset == 'ae2' or dataset == 'pc_assembly':
+    if dataset == 'gtea' or dataset == 'ae2':
         non_splt = False
     else:
         non_splt = True
@@ -170,7 +141,8 @@ def main():
                 # print(window.shape)
                 # raise Exception("xx")
                 if 1:#not os.path.exists(os.path.join(save_dir, filename[0])):
-                    window = window.to(device)
+                    # window = window.to(device)
+                    window = window.cuda()
                     if non_splt :
                         window_size = 15
                         if model_name == 'milnce':
@@ -213,7 +185,7 @@ def main():
                         feature = feature.reshape(b, config.data.num_frames, -1)
                         feature = feature.permute(0,2,1)
                         
-                        if dataset == 'ae2' or dataset == 'pc_assembly':
+                        if dataset == 'ae2':
                             for bb in range(b):
                                 np.save(filename[bb], feature[bb, :].cpu().numpy())
                         else:
@@ -251,7 +223,8 @@ def main():
 
                         feature_list = []
                         for i, sb in enumerate(sub_batches):
-                            sb = sb.to(device)
+                            # sb = sb.to(device)
+                            sb = sb.cuda()
                             if model_name == 'milnce' or model_name == 'pvrl':
                                 sb = sb.permute(0,2,1,3,4)
                                 # print(sb.shape)
@@ -274,7 +247,7 @@ def main():
                         # print('-'*20)
                         feature = feature.permute(1,0)
 
-                        if dataset == 'ae2' or dataset == 'pc_assembly':
+                        if dataset == 'ae2':
                             np.save(filename[0], feature.cpu().numpy())
                         else:
                             np.save(os.path.join(save_dir, filename[0]), feature.cpu().numpy())
@@ -285,3 +258,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
