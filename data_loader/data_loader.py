@@ -13,6 +13,7 @@ from torch.utils.data.dataloader import default_collate
 from base import BaseDataLoaderExplicitSplit, BaseMultiDataLoader, \
     DistBaseDataLoaderExplicitSplit, MultiDistBaseDataLoaderExplicitSplit
 from data_loader.EgoClip_CF import EgoClip_CF
+from data_loader.EpicKitchens_MIR_dataset import MultiInstanceRetrieval
 from data_loader.CharadesEgo_dataset import CharadesEgo
 from data_loader.EgoAggregation_dataset import EgoAggregation
 
@@ -79,6 +80,8 @@ def dataset_loader(dataset_name,
         dataset = EgoAggregation(**kwargs)
     elif dataset_name == "CharadesEgo":
         dataset = CharadesEgo(**kwargs)
+    elif dataset_name == "EpicKitchens_MIR":
+        dataset = MultiInstanceRetrieval(**kwargs)
     else:
         raise NotImplementedError(f"Dataset: {dataset_name} not found.")
 
