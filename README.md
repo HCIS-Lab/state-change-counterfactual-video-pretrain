@@ -4,7 +4,7 @@ Official code of [What Changed and What Could Have Changed? State-Change Counter
 
 ## Installation
 
-To create a conda enviornment with the required dependencies, run the following command:
+To create a conda environment with the required dependencies, run the following command:
 
 ```bash
 conda env create -f environment.yml
@@ -32,6 +32,19 @@ Charades-Ego:
 AE2:
 
 ## Generate State Changes and Their Counterfactuals with Llama
+
+Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and instructions. We use the scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset:
+
+```
+# clip-level state changes and their counterfactuals
+cd llama_script
+python clip_level_sc_cf.py
+
+# video-level counterfactuals
+cd llama_script
+python video_level_cf.py
+```
+
 
 ## Generate Text Features from FLAVA
 
@@ -101,8 +114,7 @@ If you use the code or the method, please cite the following paper:
 ```bibtek
 @InProceedings{counterfacutal_ICCV_2025,
     author    = {Kung, Chi-Hsi and Ramirez, Frangil and Ha, Juhyung and Chen, Yi-Ting and Crandall, David and Tsai, Yi-Hsuan},
-    title     = {What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning
-},
+    title     = {What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning},
     booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
     month     = {October},
     year      = {2025},
