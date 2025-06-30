@@ -71,9 +71,9 @@ The parameters of the SLURM job can be changed in the trainer.sh script. We use 
 The pretraining checkpoint is available [here](https://drive.google.com/drive/folders/1fNGuHmyzqygvgbvvE07GylB90kt-NlTi).
 
 
-## Downstream Task Training
+## Downstream Task Training/Testing
 
-### Temporal Action Segmentation
+### Temporal Action Segmentation (GTEA)
 Step 1: Generate features with the pre-trained video model. 
 
 Please note that you will need to specify the dataset, model name, cofig path in the script and the "save_dir" in ./as_configs/gtea/gtea_exfm.yaml.
@@ -93,15 +93,13 @@ python eval.py -- result_dir path_to_results --split 1/2/3/4/0
 
 Please refer to [ASFormer](https://github.com/ChinaYi/ASFormer) for more details.
 
+### Temporal Action Segmentation (EgoPER)
+
 ### Error Detection
 
 ### AE2 Action Phase Recognition
 
-## Downstream Task Testing
-
-### Temporal Action Segmentation
-
-### Error Detection
+## Zero-Shot Downstream Task Testing
 
 ### EpicKitchen-100 Zero-Shot Multi-Instance Retrieval
 
