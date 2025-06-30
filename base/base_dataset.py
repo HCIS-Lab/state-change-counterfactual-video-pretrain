@@ -349,7 +349,8 @@ def read_frames_cv2_epic(video_path, start_frame, stop_frame, num_frames, sample
     frames = []
     success_idxs = []
     for index in frame_idxs:
-        img_name = 'frame_' + str(index).zfill(10) + '.jpg'
+        # img_name = 'frame_' + str(index).zfill(10) + '.jpg'
+        img_name = str(index).zfill(10) + '.png'
         frame = cv2.imread(os.path.join(video_path, img_name),cv2.COLOR_BGR2RGB)
 
         frame = torch.from_numpy(frame)
