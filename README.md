@@ -88,7 +88,7 @@ The pretraining checkpoint is available [here](https://drive.google.com/drive/fo
 ### EpicKitchen-100 Zero-Shot Multi-Instance Retrieval
 
 ```python
-python run/test_epic.py
+python downstream_script/test_epic.py
 ```
 
 ### Charades-Ego Zero-Shot Action Classification
@@ -108,7 +108,7 @@ python run/test_charades.py
 If you use the code or the method, please cite the following paper:
 
 ```bibtek
-@InProceedings{counterfacutal_ICCV_2025,
+@InProceedings{counterfactual_ICCV_2025,
     author    = {Kung, Chi-Hsi and Ramirez, Frangil and Ha, Juhyung and Chen, Yi-Ting and Crandall, David and Tsai, Yi-Hsuan},
     title     = {What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning},
     booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
