@@ -11,7 +11,7 @@ if [ "$1" = "" ]; then
     exit 1
 fi
 
-export JOB_NAME=$1_$(date '+%Y-%m-%d_%H:%M:%S')
+export JOB_NAME=$1_$(date '+%Y-%m-%d_%H_%M_%S')
 export DESTINATION_DIR='experiments'
 
 mkdir $DESTINATION_DIR/$JOB_NAME/
@@ -25,7 +25,7 @@ cp -R trainer/ $DESTINATION_DIR/$JOB_NAME/
 cp -R utils/ $DESTINATION_DIR/$JOB_NAME/
 cp parse_config.py $DESTINATION_DIR/$JOB_NAME/
 cp distributed_main.py $DESTINATION_DIR/$JOB_NAME/
-cp trainer_a100.sh $DESTINATION_DIR/$JOB_NAME/trainer_local.sh
+cp trainer.sh $DESTINATION_DIR/$JOB_NAME/trainer_local.sh
 
 cd $DESTINATION_DIR/$JOB_NAME/
 
