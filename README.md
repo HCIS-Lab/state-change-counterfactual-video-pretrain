@@ -23,7 +23,7 @@ Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data pr
 
 GTEA: Please follow [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt) to download the raw video and then extract frames from videos.
 
-EgoPRE: Link.
+EgoPRE: .
 
 EpicKitchen & Charades-Ego: Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data preparation.
 
@@ -31,7 +31,7 @@ AE2:
 
 ## Generate State Changes and Their Counterfactuals with Llama
 
-Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and instructions. We use the scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset:
+Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and instructions. We use the following scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset. Please note that you will need to modify the paths to Ego4D's annotation files in the scripts.
 
 ```
 # clip-level state changes and their counterfactuals
@@ -74,6 +74,24 @@ The pretraining checkpoint is available [here](https://drive.google.com/drive/fo
 ## Downstream Task Training
 
 ### Temporal Action Segmentation
+Step 1: Generate features with the pre-trained video model. 
+
+Please note that you will need to specify the dataset, model name, cofig path in the script and the "save_dir" in ./as_configs/gtea/gtea_exfm.yaml.
+
+```
+python extract_frame_features.py
+```
+
+Step 2: Train/test ASFormer based on the features.
+
+```
+cd ASFormer
+python main.py --feature cf --dataset gtea --split 1/2/3/4
+python main.py --action eval --feature cf --dataset gtea --split 1/2/3/4
+python eval.py -- result_dir path_to_results --split 1/2/3/4/0
+```
+
+Please refer to [ASFormer](https://github.com/ChinaYi/ASFormer) for more details.
 
 ### Error Detection
 
