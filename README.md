@@ -132,7 +132,3 @@ The temporal action segmentation code is adapted from [ASFormer](https://github.
 The action phase recognition and frame retrieval code is adapted from [AE2]()
 
 We thank the authors and maintainers of these codebases.
-
-## License
-
-HierVL is licensed under the [CC-BY-NC license](LICENSE).
