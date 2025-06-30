@@ -1,6 +1,6 @@
 # What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning
 
-Official code of [What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning]([https://openaccess.thecvf.com/content/CVPR2023/html/Ashutosh_HierVL_Learning_Hierarchical_Video-Language_Embeddings_CVPR_2023_paper.html](https://arxiv.org/abs/2503.21055)), ICCV 2025.
+Official code of [What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning](https://arxiv.org/abs/2503.21055), ICCV 2025.
 
 ## Installation
 
@@ -23,7 +23,7 @@ Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data pr
 
 GTEA: Please follow [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt) to download the raw video and then extract frames from videos.
 
-EgoPRE: Link.
+EgoPRE: .
 
 EpicKitchen & Charades-Ego: Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data preparation.
 
@@ -31,7 +31,7 @@ AE2:
 
 ## Generate State Changes and Their Counterfactuals with Llama
 
-Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and instructions. We use the scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset:
+Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and instructions. We use the following scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset. Please note that you will need to modify the paths to Ego4D's annotation files in the scripts.
 
 ```
 # clip-level state changes and their counterfactuals
@@ -68,27 +68,43 @@ The parameters of the SLURM job can be changed in the trainer.sh script. We use 
 
 ## Pretraining Checkpoint
 
-The pretraining checkpoint is available [here]().
+The pretraining checkpoint is available [here](https://drive.google.com/drive/folders/1fNGuHmyzqygvgbvvE07GylB90kt-NlTi).
 
 
-## Downstream Task Training
+## Downstream Task Training/Testing
 
-### Temporal Action Segmentation
+### Temporal Action Segmentation (GTEA)
+Step 1: Generate features with the pre-trained video model. 
+
+Please note that you will need to specify the dataset, model name, cofig path in the script and the "save_dir" in ./as_configs/gtea/gtea_exfm.yaml.
+
+```
+python extract_frame_features.py
+```
+
+Step 2: Train/test ASFormer based on the features.
+
+```
+cd ASFormer
+python main.py --feature cf --dataset gtea --split 1/2/3/4
+python main.py --action eval --feature cf --dataset gtea --split 1/2/3/4
+python eval.py -- result_dir path_to_results --split 1/2/3/4/0
+```
+
+Please refer to [ASFormer](https://github.com/ChinaYi/ASFormer) for more details.
+
+### Temporal Action Segmentation (EgoPER)
 
 ### Error Detection
 
 ### AE2 Action Phase Recognition
 
-## Downstream Task Testing
-
-### Temporal Action Segmentation
-
-### Error Detection
+## Zero-Shot Downstream Task Testing
 
 ### EpicKitchen-100 Zero-Shot Multi-Instance Retrieval
 
 ```python
-python run/test_epic.py
+python downstream_script/test_epic.py
 ```
 
 ### Charades-Ego Zero-Shot Action Classification
@@ -108,7 +124,7 @@ python run/test_charades.py
 If you use the code or the method, please cite the following paper:
 
 ```bibtek
-@InProceedings{counterfacutal_ICCV_2025,
+@InProceedings{counterfactual_ICCV_2025,
     author    = {Kung, Chi-Hsi and Ramirez, Frangil and Ha, Juhyung and Chen, Yi-Ting and Crandall, David and Tsai, Yi-Hsuan},
     title     = {What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning},
     booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
