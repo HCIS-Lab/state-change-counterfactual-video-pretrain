@@ -2,6 +2,8 @@
 
 Official code of [What Changed and What Could Have Changed? State-Change Counterfactuals for Procedure-Aware Video Representation Learning](https://arxiv.org/abs/2503.21055), ICCV 2025.
 
+![image](https://github.com/HCIS-Lab/state-change-counterfactual-video-pretrain/blob/main/counterfactual.gif)
+
 ## Installation
 
 To create a conda environment with the required dependencies, run the following command:
