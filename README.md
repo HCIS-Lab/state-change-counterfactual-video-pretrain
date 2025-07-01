@@ -84,6 +84,8 @@ Please note that you will need to specify the dataset, model name, cofig path in
 python extract_frame_features.py
 ```
 
+Please refer to [Bridge-Prompt](https://github.com/ttlmh/Bridge-Prompt) for more details.
+
 Step 2: Train/test ASFormer based on the features.
 
 ```
