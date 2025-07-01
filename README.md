@@ -33,7 +33,7 @@ AE2:
 
 ## Generate State Changes and Their Counterfactuals with Llama
 
-Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and instructions. We use the following scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset. Please note that you will need to modify the paths to Ego4D's annotation files in the scripts.
+Please refer to [Llama 3](https://github.com/meta-llama/llama3) for model weights and installation instructions. We use the following scripts to generate state change and counterfactual descriptions for the entire Ego4D dataset. Please note that you will need to modify the paths to Ego4D's annotation files in the scripts.
 
 ```
 # clip-level state changes and their counterfactuals
@@ -56,11 +56,11 @@ We use two nodes for distributed training. Each node has 4 32GB GPUs. The pretra
 python -m torch.distributed.launch  --nnodes=$HOST_NUM  --node_rank=$INDEX  --master_addr $CHIEF_IP  --nproc_per_node $HOST_GPU_NUM  --master_port 8081  run/train_egoaggregate.py --config configs/pt/egoaggregation.json
 ```
 
-We experiment mainly on SLURM and the instructions to run this code on SLURM is given next.
+We experiment mainly on SLURM, and the instructions to run this code on SLURM is given next.
 
 ## Running on SLURM cluster
 
-To run the pretraining on a distributed SLURM system, copy the content of `slurm_scripts` to this directly level and run
+To run the pretraining on a distributed SLURM system, copy the content of `slurm_scripts` to this level directly and run
 
 ```
 bash mover_trainer.sh job_name
