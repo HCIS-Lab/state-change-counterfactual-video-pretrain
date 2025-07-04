@@ -20,16 +20,16 @@ class NormSoftmaxLoss(nn.Module):
     def forward(self, x):
         "Assumes input x is similarity matrix of N x M \in [-1, 1], computed using the cosine similarity between normalised vectors"
         i_logsm = F.log_softmax(x/self.temperature, dim=1)
-        # j_logsm = F.log_softmax(x.t()/self.temperature, dim=1)
+        j_logsm = F.log_softmax(x.t()/self.temperature, dim=1)
 
         # sum over positives
         idiag = torch.diag(i_logsm)
         loss_i = idiag.sum() / len(idiag)
 
-        # jdiag = torch.diag(j_logsm)
-        # loss_j = jdiag.sum() / len(jdiag)
+        jdiag = torch.diag(j_logsm)
+        loss_j = jdiag.sum() / len(jdiag)
 
-        return - loss_i #- loss_j
+        return - loss_i - loss_j
 
 class EgoNCE(nn.Module):
     def __init__(self, temperature=0.05, noun=True, verb=True):
@@ -84,42 +84,71 @@ class InfoNCE(nn.Module):
         f2 = frame_embeds[:, 2]
         f3 = frame_embeds[:, 3]
 
-        sim_0_1 = sim_matrix(f0, f1).contiguous()
-        sim_0_before = sim_matrix(f0, before).contiguous()
-        sim_1_before = sim_matrix(f1, before).contiguous()
-        sim_3_2 = sim_matrix(f3, f2).contiguous()
-        sim_3_after = sim_matrix(f3, after).contiguous()
-        sim_2_after = sim_matrix(f2, after).contiguous()
-# here
-        neg = torch.stack([f0,f1,f2,f3,before,after,CF1,CF2,CF3], dim=0).unsqueeze(1)
-        f0 = f0.unsqueeze(0).expand(9, -1, -1)
-        f1 = f1.unsqueeze(0).expand(9, -1, -1)
-        f2 = f2.unsqueeze(0).expand(9, -1, -1)
-        f3 = f3.unsqueeze(0).expand(9, -1, -1)
+        sim_0_1 = sim_matrix(f0, f1)
+        sim_0_3 = sim_matrix(f0, f3)
+        sim_0_before = sim_matrix(f0, before)
+        sim_0_after = sim_matrix(f0, after)
+        sim_0_cf1 = sim_matrix(f0, CF1)
+        sim_0_cf2 = sim_matrix(f0, CF2)
+        sim_0_cf3 = sim_matrix(f0, CF3)
 
-        sim_0 = F.cosine_similarity(f0.unsqueeze(2), neg, dim=-1)
-        sim_1 = F.cosine_similarity(f1.unsqueeze(2), neg, dim=-1)
-        sim_2 = F.cosine_similarity(f2.unsqueeze(2), neg, dim=-1)
-        sim_3 = F.cosine_similarity(f3.unsqueeze(2), neg, dim=-1)
+        sim_3_0 = sim_matrix(f3, f0) 
+        sim_3_2 = sim_matrix(f3, f2)
+        sim_3_after = sim_matrix(f3, after)
+        sim_3_before = sim_matrix(f3, before)
+        sim_3_cf1 = sim_matrix(f3, CF1)
+        sim_3_cf2 = sim_matrix(f3, CF2)
+        sim_3_cf3 = sim_matrix(f3, CF3)
 
-        denom_0 = torch.exp(sim_0/self.temperature).sum(0).sum(-1).unsqueeze(-1).contiguous()
-        denom_1 = torch.exp(sim_1/self.temperature).sum(0).sum(-1).unsqueeze(-1).contiguous()
-        denom_2 = torch.exp(sim_2/self.temperature).sum(0).sum(-1).unsqueeze(-1).contiguous()
-        denom_3 = torch.exp(sim_3/self.temperature).sum(0).sum(-1).unsqueeze(-1).contiguous()
+        if setting == 4: # regular tcn
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
+                torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) 
 
-        tcn_0 = - ( torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_0 ) * mask_bool, dim=-1 ) ) + \
-                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_0 ) * mask_bool, dim=-1 ) )) / 2.0
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
+                    torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) 
+            
+        elif setting == 2: # only before state
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) 
+
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature)
         
-        tcn_1 = - ( torch.log( torch.sum( ( (torch.exp(sim_0_1.t()/self.temperature) + epsilon) / denom_1 ) * mask_bool, dim=-1 ) ) + \
-                    torch.log( torch.sum( ( (torch.exp(sim_1_before/self.temperature) + epsilon) / denom_1 ) * mask_bool, dim=-1 ) )) / 2.0
+        elif setting == 3: # before and after state (no cf)
+            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature)
 
-        tcn_2 = - ( torch.log( torch.sum( ( (torch.exp(sim_3_2.t()/self.temperature) + epsilon) / denom_2 ) * mask_bool, dim=-1 ) ) + \
-                    torch.log( torch.sum( ( (torch.exp(sim_2_after/self.temperature) + epsilon) / denom_2 ) * mask_bool, dim=-1 ) )) / 2.0
+            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature)
+            
+        else:
+            raise NotImplementedError("tcn setting undefined")
+
+        denom_tcn_0 = denom_tcn_0.sum(-1).unsqueeze(-1)
+        denom_tcn_3 = denom_tcn_3.sum(-1).unsqueeze(-1)
+
+        if (setting == 4) or (setting == 3): 
+            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+            
+            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
         
-        tcn_3 = - ( torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_3 ) * mask_bool, dim=-1 ) ) + \
-                    torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_3 ) * mask_bool, dim=-1 ) )) / 2.0
+        elif setting == 2:
+            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+            
+            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
         
-        tcn = .05*(tcn_0.mean() + tcn_1.mean() + tcn_2.mean() + tcn_3.mean()).contiguous()
+        else:
+            raise NotImplementedError("tcn setting undefined")
+        
+        tcn_0 /= 2
+        tcn_3 /= 2
+        
+        tcn = .2*((tcn_3 + tcn_0) / 2.0).mean()
 
         return tcn
 
