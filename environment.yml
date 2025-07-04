@@ -1,4 +1,4 @@
-name: hiervl
+name: cf
 channels:
   - defaults
 dependencies:
