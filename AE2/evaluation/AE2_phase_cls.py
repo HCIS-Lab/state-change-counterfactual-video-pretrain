@@ -67,15 +67,15 @@ def classification(dataset):
     return regular_f1, ego2exo_F1, exo2ego_F1, ego_onlyF1
 
 def load_data(dataset, mode, ego_only, exo_only):
-    if not ego_only and not exo_only: # if not ego_only and not ego_only:
-        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_ablation1.npy")
-        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_ablation1.npy")
+    if not ego_only and not exo_only: 
+        embeds = np.load(f".../AE2_data/embeddings/{dataset}/{mode}_embeds.npy")
+        labels = np.load(f".../AE2_data/embeddings/{dataset}/{mode}_label.npy")
     elif not ego_only and exo_only:
-        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_exoOnly_ablation1.npy")
-        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_exoOnly_ablation1.npy")
+        embeds = np.load(f".../AE2_data/embeddings/{dataset}/{mode}_embeds_exoOnly.npy")
+        labels = np.load(f".../AE2_data/embeddings/{dataset}/{mode}_label_exoOnly.npy")
     elif ego_only and not exo_only:
-        embeds = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds_egoOnly_ablation1.npy")
-        labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_egoOnly_ablation1.npy")
+        embeds = np.load(f".../AE2_data/embeddings/{dataset}/{mode}_embeds_egoOnly.npy")
+        labels = np.load(f".../AE2_data/embeddings/{dataset}/{mode}_label_egoOnly.npy")
     else:
         raise NotImplementedError("This mode is not available yet.")
     

@@ -68,7 +68,7 @@ class InfoNCE(nn.Module):
         self.noun = noun
         self.verb = verb
 
-    def forward_tcn(self, frame_embeds, text_embeds, mask_bool, setting):
+    def forward_tcn(self, frame_embeds, text_embeds, mask_bool):
         before, after, CF1, CF2, CF3 = text_embeds
         before.requires_grad = False
         after.requires_grad = False
@@ -100,50 +100,22 @@ class InfoNCE(nn.Module):
         sim_3_cf2 = sim_matrix(f3, CF2)
         sim_3_cf3 = sim_matrix(f3, CF3)
 
-        if setting == 4: # regular tcn
-            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
-                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
-                torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) 
+        denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
+            torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature) + \
+            torch.exp(sim_0_cf1/self.temperature) + torch.exp(sim_0_cf2/self.temperature) + torch.exp(sim_0_cf3/self.temperature) 
 
-            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
-                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
-                    torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature) 
-            
-        elif setting == 2: # only before state
-            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
-                torch.exp(sim_0_3/self.temperature) 
-
-            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + \
-                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature)
-        
-        elif setting == 3: # before and after state (no cf)
-            denom_tcn_0 = epsilon + torch.exp(sim_0_1/self.temperature) + torch.exp(sim_0_before/self.temperature) + \
-                torch.exp(sim_0_3/self.temperature) + torch.exp(sim_0_after/self.temperature)
-
-            denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
-                    torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature)
-            
-        else:
-            raise NotImplementedError("tcn setting undefined")
+        denom_tcn_3 = epsilon + torch.exp(sim_3_2/self.temperature) + torch.exp(sim_3_after/self.temperature) + \
+                torch.exp(sim_3_0/self.temperature) + torch.exp(sim_3_before/self.temperature) + \
+                torch.exp(sim_3_cf1/self.temperature) + torch.exp(sim_3_cf2/self.temperature) + torch.exp(sim_3_cf3/self.temperature)       
 
         denom_tcn_0 = denom_tcn_0.sum(-1).unsqueeze(-1)
         denom_tcn_3 = denom_tcn_3.sum(-1).unsqueeze(-1)
 
-        if (setting == 4) or (setting == 3): 
-            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
-                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
+        tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
+                torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
             
-            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
-                    torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
-        
-        elif setting == 2:
-            tcn_0 = -torch.log( torch.sum( ( (torch.exp(sim_0_1/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) ) - \
-                    torch.log( torch.sum( ( (torch.exp(sim_0_before/self.temperature) + epsilon) / denom_tcn_0 ) * mask_bool, dim=-1 ) )
-            
-            tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
-        
-        else:
-            raise NotImplementedError("tcn setting undefined")
+        tcn_3 = -torch.log( torch.sum( ( (torch.exp(sim_3_2/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) ) - \
+                torch.log( torch.sum( ( (torch.exp(sim_3_after/self.temperature) + epsilon) / denom_tcn_3 ) * mask_bool, dim=-1 ) )
         
         tcn_0 /= 2
         tcn_3 /= 2
@@ -153,7 +125,7 @@ class InfoNCE(nn.Module):
         return tcn
 
 
-    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds, setting):
+    def forward(self, text_embeds, video_embeds, v_embeds, n_embeds, frame_embeds):
         loss_dict = {}
         
         narration, before, after, CF1, CF2, CF3 = text_embeds
@@ -179,14 +151,7 @@ class InfoNCE(nn.Module):
 
         assert frame_embeds.requires_grad
         
-        if setting == 1:
-            tcn = torch.tensor([0.]).cuda()
-        elif setting > 1 and setting < 5:
-            tcn = self.forward_tcn(frame_embeds, text_embeds[1:], mask_bool, setting)
-        elif setting == 5 or setting == 6 or setting == 0:
-            tcn = self.forward_tcn(frame_embeds, text_embeds[1:], mask_bool, setting=4)
-        else:
-            raise NotImplementedError("forward setting undefined")
+        tcn = self.forward_tcn(frame_embeds, text_embeds[1:], mask_bool)
 
         loss_dict['tcn'] = tcn.item()
 
@@ -223,17 +188,9 @@ class InfoNCE(nn.Module):
 
         return loss_align, x, mask_bool
     
-    def forward_cf(self, text_embeds, video_embeds, summ_align, mask, setting):
+    def forward_cf(self, text_embeds, video_embeds, summ_align, mask):
         epsilon = 1e-8
         dim = text_embeds.shape[0]
-        
-        if (setting > 0 and setting < 5):
-            align_sim = torch.exp(summ_align/self.temperature) + epsilon
-            denom_tcn_1 = align_sim.sum(-1).unsqueeze(-1)
-            tcn_0 = -torch.log( torch.sum( ( align_sim / denom_tcn_1 ) * mask, dim=-1 ) ) 
-            tcn = tcn_0.mean().contiguous()
-
-            return tcn
         
         vid_expanded = video_embeds.unsqueeze(0).expand(dim, -1, -1)
         sim_cf = F.cosine_similarity(vid_expanded.unsqueeze(2), text_embeds.unsqueeze(1), dim=-1)
@@ -250,14 +207,7 @@ class InfoNCE(nn.Module):
         return tcn
         
     
-    def forward_summary(self, summary_embeds, video_embeds, cf_parent, v_embeds, n_embeds, setting):
-        
-        if setting == 5:
-            cf_parent = cf_parent[10:, :]
-        elif setting == 6:
-            cf_parent = cf_parent[:10, :]
-        else:
-            pass
+    def forward_summary(self, summary_embeds, video_embeds, cf_parent, v_embeds, n_embeds):
 
         _, x, mask_bool = self.forward_align(
                         text_embeds=summary_embeds, 
@@ -272,7 +222,6 @@ class InfoNCE(nn.Module):
                         video_embeds=video_embeds,
                         summ_align=x,
                         mask=mask_bool,
-                        setting=setting
                         )
 
         loss_dict = {

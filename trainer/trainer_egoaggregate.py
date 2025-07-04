@@ -96,7 +96,6 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
             param_group['lr'] = lr
     
     def _train_step(self, data, epoch, batch_idx, dl_idx, hierarchy='child', state=True, cf=True):
-        setting = 0
 
         if hierarchy == 'child':
             batch_size = self.batch_size
@@ -286,11 +285,11 @@ class Multi_Trainer_dist_EgoAgg(Multi_BaseTrainer_dist):
                 bsz, cf, d = cf_parent.shape
                 cf_parent = cf_parent.contiguous().view(cf,bsz,d)
                 # order_cf = order_cf.contiguous().view(cf,bsz,d)
-                loss_dict, loss = self.loss.forward_summary(text_embeds.contiguous(), video_embeds.contiguous(), cf_parent, v_embeds.contiguous(), n_embeds.contiguous(), setting) #output1 is text and summary
+                loss_dict, loss = self.loss.forward_summary(text_embeds.contiguous(), video_embeds.contiguous(), cf_parent, v_embeds.contiguous(), n_embeds.contiguous()) #output1 is text and summary
             else:
                 loss_dict, loss = self.loss(text_embeds, video_embeds, \
                                                 v_embeds, n_embeds, 
-                                                frame_embeds, setting)
+                                                frame_embeds)
 
             # intra_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_intra_loss is not None)
             # inter_loss_exists = (hierarchy == 'parent' and self.do_hierarchical and total_inter_loss is not None)

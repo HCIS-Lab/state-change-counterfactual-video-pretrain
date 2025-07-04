@@ -29,7 +29,7 @@ EgoPRE: .
 
 EpicKitchen & Charades-Ego: Please refer to [EgoVLP](https://github.com/showlab/EgoVLP) codebase for data preparation.
 
-AE2:
+AE2: Please pre-extract frame features for this task, following [Align-Ego-Exo](https://github.com/zihuixue/AlignEgoExo) for the data split.
 
 ## Generate State Changes and Their Counterfactuals with Llama
 
@@ -45,8 +45,19 @@ cd llama_script
 python video_level_cf.py
 ```
 
-
 ## Generate Text Features with FLAVA
+
+To extract clip-level narration features, please run
+
+```python
+language_extraction/feature_extractor.py
+```
+
+To extract video-level summary features, please run
+
+```python
+language_extraction/summary_feature_extractor.py
+```
 
 ## Pretraining
 
@@ -56,7 +67,7 @@ We use two nodes for distributed training. Each node has 4 32GB GPUs. The pretra
 python -m torch.distributed.launch  --nnodes=$HOST_NUM  --node_rank=$INDEX  --master_addr $CHIEF_IP  --nproc_per_node $HOST_GPU_NUM  --master_port 8081  run/train_egoaggregate.py --config configs/pt/egoaggregation.json
 ```
 
-We experiment mainly on SLURM, and the instructions to run this code on SLURM is given next.
+The instructions to run this code on SLURM are given next.
 
 ## Running on SLURM cluster
 
@@ -68,6 +79,13 @@ bash mover_trainer.sh job_name
 
 The parameters of the SLURM job can be changed in the trainer.sh script. We use 2 nodes, each with 4 32 GB GPUs. The submit schedule first copies the required scripts to a different folder and then runs it from there. This copying ensures the code can be safely edited while a job is in the SLURM queue.
 
+## Running on a single machine
+
+Please run
+
+```python
+torchrun  --nnodes 1 --nproc_per_node 8 --master_port 8081  run/train_egoaggregate.py --config configs/pt/egoaggregation.json
+```
 ## Pretraining Checkpoint
 
 The pretraining checkpoint is available [here](https://drive.google.com/drive/folders/1fNGuHmyzqygvgbvvE07GylB90kt-NlTi).
@@ -103,6 +121,10 @@ Please refer to [ASFormer](https://github.com/ChinaYi/ASFormer) for more details
 
 ### AE2 Action Phase Recognition
 
+```python
+python AE2/AE2_phase_cls.py
+```
+
 ## Zero-Shot Downstream Task Testing
 
 ### EpicKitchen-100 Zero-Shot Multi-Instance Retrieval
@@ -113,19 +135,19 @@ python downstream_script/test_epic.py
 
 ### Charades-Ego Zero-Shot Action Classification
 
-### AE2 Zero-Shot Action Phase Frame Retrieval
-
-
-To test the performance, run
-
 ```python
-python run/test_charades.py
+python downstream_script/test_charades.py
 ```
 
+### AE2 Zero-Shot Action Phase Frame Retrieval
+
+```python
+python AE2/AE2_frame_retrieval.py
+```
 
 ## Citation
 
-If you use the code or the method, please cite the following paper:
+If you use our code or method, please cite the following paper:
 
 ```bibtek
 @InProceedings{counterfactual_ICCV_2025,
@@ -145,4 +167,4 @@ The feature extraction code is adapted from [Bridge-Prompt](https://github.com/t
 
 The temporal action segmentation code is adapted from [ASFormer](https://github.com/ChinaYi/ASFormer).
 
-The action phase recognition and frame retrieval code is adapted from [AE2]()
+The action phase recognition and frame retrieval code is adapted from [AE2](https://github.com/zihuixue/AlignEgoExo)

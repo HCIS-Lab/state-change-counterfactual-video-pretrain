@@ -9,14 +9,14 @@ def _construct_video_path_by_mode(dir_name, mode):
     for line in f_out:
         line = line.strip()
         base_name = os.path.splitext(line)[0]  # Remove .mp4
-        new_name = base_name + '_ab1_frameMean.npy'
+        new_name = base_name + '_cf.npy' # this was for us to distinguish all features... can erase
         video_paths.append(os.path.join(dir_name, new_name))
     return video_paths
 
 def _construct_video_path(dir_name):
     video_paths = []
     for item in os.listdir(dir_name):
-        if item.endswith('_ab1_frameMean.npy'):
+        if item.endswith('_cf.npy'):
             video_paths.append(os.path.join(dir_name, item))
     assert len(video_paths) > 1
     print(f'{len(video_paths)} videos in {dir_name}')
@@ -88,30 +88,20 @@ def retrieval_ap_at_k(video_len_list, video_paths, embeddings, labels, k_list, c
 
 
 def frame_retrieval(dataset, video_len_list, video_paths):
-    # train_embs = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/train_embeds_ab1_frameMean.npy")
-    # train_labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/train_label_ab1_frameMean.npy")
     
-    val_embs = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/val_embeds_ab1_frameMean.npy")
-    val_labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/val_label_ab1_frameMean.npy")
+    val_embs = np.load(f".../AE2_data/embeddings/{dataset}/xx.npy") # your pre-extracted features
+    val_labels = np.load(f".../AE2_data/embeddings/{dataset}/xx.npy")
 
-    test_embs = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/test_embeds_ab1_frameMean.npy")
-    test_labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/test_label_ab1_frameMean.npy")
+    test_embs = np.load(f".../AE2_data/embeddings/{dataset}/xx.npy")
+    test_labels = np.load(f".../AE2_data/embeddings/{dataset}/xx.npy")
 
     te = np.concatenate([test_embs, val_embs], axis=0)
     tl = np.concatenate([test_labels, val_labels], axis=0)
-    # te = test_embs
-    # tl = test_labels 
 
     regular = retrieval_ap_at_k(video_len_list, video_paths, te, tl, [10], cross_view=False)
-    # ego2exo, exo2ego = retrieval_ap_at_k(video_len_list, video_paths, val_embs, val_labels, [10], cross_view=True)
-    return regular#, ego2exo, exo2ego
+    return regular
 
 def main():
-    md ='_ab1_frameMean'
-    print(md)
-
-    # mode = 'test'
-    print("mode: ", 'test and val')
     sets = ["break_eggs", "pour_milk", "pour_liquid", "tennis_forehand"]
     avgs = {"ego_and_exo": [], "ego2exo": [], "exo2ego":[], "ego_only": []}
     
@@ -123,82 +113,32 @@ def main():
         video_len_list = []
         print()
         ego_vid = []
-        # exo_vid = []
-        for mode in ['test', 'val']:
-        # for mode in ['test']:
-            if dataset in ["break_eggs", "tennis_forehand"]:
-                ego_vid += _construct_video_path_by_mode(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/ego", mode)
-                ego_vid += _construct_video_path_by_mode(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/exo", mode)
-            else:
-                ego_vid += _construct_video_path(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/{mode}/ego")
-                ego_vid += _construct_video_path(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/{mode}/exo")
-            
-            # ego_vid += exo_vid
 
-        # print("len before: ", len(ego_vid))
-        # ego_vid = list(set(ego_vid))
+        for mode in ['test', 'val']:
+            if dataset in ["break_eggs", "tennis_forehand"]:
+                ego_vid += _construct_video_path_by_mode(f".../AE2_data/{dataset}/ego", mode)
+                ego_vid += _construct_video_path_by_mode(f".../AE2_data/{dataset}/exo", mode)
+            else:
+                ego_vid += _construct_video_path(f".../AE2_data/{dataset}/{mode}/ego")
+                ego_vid += _construct_video_path(f".../AE2_data/{dataset}/{mode}/exo")
+            
         assert len(ego_vid) == len(list(set(ego_vid)))
-        # print("len after: ", len(ego_vid))
 
         for video in ego_vid:
             video_frames_count = int(np.load(video).shape[-1])
-            # video_frames_count = int(np.load(video).shape[0])
             video_len_list.append(video_frames_count)
         
         reg_map10 = frame_retrieval(dataset, video_len_list, ego_vid)
 
         avgs["ego_and_exo"].append(reg_map10)
-        # avgs["ego2exo"].append(ego2exo_F1)
-        # avgs["exo2ego"].append(exo2ego_F1)
-        # avgs["ego_only"].append(ego_onlyF1)
 
-        print(f'Test MAP@10: regular_testval={reg_map10:.4f}')# | ego2exo={ego2exo_F1:.4f} | exo2ego={exo2ego_F1:.4f} | ego_only={ego_onlyF1:.4f}')
+
+        print(f'Test MAP@10: regular_testval={reg_map10:.4f}')
     
     print()
     for k,v in avgs.items():
         print(k, sum(v) / 4)
 
-# def debug():
-#     sets = ["break_eggs", "pour_milk", "pour_liquid", "tennis_forehand"]
-    
-#     for dataset in sets:
-#         # print()
-#         # print("-"*20)
-#         # print("dataset: ", dataset)
-
-#         video_len_list = []
-#         # print()
-#         ego_vid = []
-#         # exo_vid = []
-#         for mode in ['train', 'test', 'val']:
-#             ego_vid = []
-#             video_len_list = []
-#             # print(mode)
-#             if dataset in ["break_eggs", "tennis_forehand"]:
-#                 ego_vid += _construct_video_path_by_mode(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/ego", mode)
-#                 # ego_vid += _construct_video_path_by_mode(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/exo", mode)
-#             else:
-#                 ego_vid += _construct_video_path(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/{mode}/ego")
-#                 # ego_vid += _construct_video_path(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/{dataset}/{mode}/exo")
-
-#             for video in ego_vid:
-#                 video_frames_count = np.load(video)
-#                 # video_frames_count = int(np.load(video).shape[0])
-#                 video_len_list.append(video_frames_count)
-            
-#             val_embs = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_embeds.npy")
-#             # val_labels = np.load(f"/nfs/wattrel/data/md0/datasets/AE2/AE2_data/embeddings/{dataset}/{mode}_label_.npy")
-
-#             x = np.concatenate(video_len_list, axis=-1).T
-#             # print(x.shape)
-#             # print(val_embs.shape)
-#             assert x.shape == val_embs.shape
-#             assert np.array_equal(x, val_embs)
-
-
 if __name__ == "__main__":
     main()
-    # debug()
-    # print()
-    # print("success!")
 

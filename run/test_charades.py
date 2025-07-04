@@ -18,20 +18,15 @@ from csv import reader
 from sacred import Experiment
 import torch.nn.functional as F
 import torch
-import torch.nn as nn
 import sys
 # sys.path.append('../')
-# from as_utils.load_pvrl import *
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'as_utils')))
-from as_utils.load_pvrl import *
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'as_utils')))
 import model.metric as module_metric
 import data_loader.data_loader as module_data
 from utils import state_dict_data_parallel_fix
 from parse_config import ConfigParser
 
-# from transformers import AutoTokenizer, FlavaTextModel
-import clip
+from transformers import AutoTokenizer, FlavaTextModel
 
 ex = Experiment('test')
 
@@ -46,6 +41,7 @@ def sim_matrix(a, b, eps=1e-8):
     sim_mt = torch.mm(a_norm, b_norm.T)
     return sim_mt
 
+# this is for our text features... can erase
 def tokenize(tokenizer, input_str):
     """
     input: pyhon list of strings
@@ -104,19 +100,6 @@ def map(submission_array, gt_array):
     w_ap = (m_aps * gt_array.sum(axis=0) / gt_array.sum().sum().astype(float))
     return m_ap, w_ap, m_aps
 
-def get_step_emb_lang(input_step_list):
-    from sentence_transformers import SentenceTransformer
-    st_model = SentenceTransformer('paraphrase-mpnet-base-v2')
-
-    text_features = []
-    for x in input_step_list:
-        with torch.no_grad():
-            sents_embs = st_model.encode(x)
-            sents_embs = torch.from_numpy(sents_embs)
-            text_features.append(sents_embs.view(1, -1))
-
-    text_features = torch.cat(text_features)
-    return text_features
 @ex.main
 def run():
     # setup data_loader instances
@@ -129,118 +112,67 @@ def run():
 
     data_loader = config.initialize('data_loader', module_data)
 
-    # tokenizer = transformers.AutoTokenizer.from_pretrained(config['arch']['args']['text_params']['model'])
-
     # build model architecture
-    # import model.counterfactual as module_arch
-    # model = config.initialize('arch', module_arch)
-    model = load_pvrl("/nfs/wattrel/data/md0/datasets/state_aware/pvrl/model_epoch_00025.pyth")
+    import model.counterfactual as module_arch
+    model = config.initialize('arch', module_arch)
 
     # get function handles of loss and metrics
     metric_fns = [getattr(module_metric, met) for met in config['metrics']]
 
     # logger.info('Loading checkpoint: {} ...'.format(config.resume))
 
-    # if config.resume is not None:
-    #     print(config.resume)
-    #     checkpoint = torch.load(config.resume)
-    #     state_dict = checkpoint['state_dict']
-    #     new_state_dict = state_dict_data_parallel_fix(state_dict, model.state_dict())
-    #     model.load_state_dict(new_state_dict, strict=False)
-    # else:
-    #     print('Using random weights')
-    # print(model)
-    model.model.head_cls = nn.Identity()
-    # model.model.head = nn.Identity()
-    # model.model.norm = nn.Identity()
+    if config.resume is not None:
+        print(config.resume)
+        checkpoint = torch.load(config.resume)
+        state_dict = checkpoint['state_dict']
+        new_state_dict = state_dict_data_parallel_fix(state_dict, model.state_dict())
+        model.load_state_dict(new_state_dict, strict=False)
+    else:
+        print('Using random weights')
+
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
 
     # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
-    clip_model, preprocess = clip.load(
-        'ViT-B/16',
-        device=device,
-        jit=False) # Must set jit=False for training  ViT-B/32
-    clip_model.cuda().eval()
-    clip_model.float()
+    flava_tokenizer = AutoTokenizer.from_pretrained("facebook/flava-full")
+    flava_model = FlavaTextModel.from_pretrained("facebook/flava-full").to(device).eval()
     model.eval()
 
     # construct set of sentences.
     cls_arr = []
-    with open('/nfs/charjabug/data/md1/datasets/charades-ego/CharadesEgo/Charades_v1_classes.txt', 'r') as charades:
+    with open('.../datasets/charades-ego/CharadesEgo/Charades_v1_classes.txt', 'r') as charades:
         csv_reader = list(reader(charades))
     for line in csv_reader:
         cls_arr.append(line[0][5:])
-    # print(len(cls_arr))
-    token_arr = clip.tokenize(cls_arr).to(device)
-    # token_arr = tokenize(flava_tokenizer, cls_arr)
-    # print(len(token_arr))
-    text_embeds = clip_model.encode_text(token_arr).float().cpu().detach()
-    # text_embeds = get_step_emb_lang(cls_arr)
-    print(text_embeds.shape)
-    # print(text_embeds.shape)
-    # raise Exception("xx")
-    # output of print():
-    # 157
-    # 3
-    # torch.Size([157, 11, 768])
+    token_arr = tokenize(flava_tokenizer, cls_arr)
+    text_embeds = embed(flava_model, token_arr.to(device)).cpu().detach()
 
-    # raise Exception("xx")
     meta_arr, gt_arr = [], []
     text_embed_arr = []
     vid_embed_arr = []
-    # print(len(data_loader))
+    print(len(data_loader))
     with torch.no_grad():
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
-        # data_cls = tokenizer(cls_arr, return_tensors='pt', padding=True, truncation=True)
-        # data_cls = {key: val.cuda() for key, val in data_cls.items()}
-
-        # dict_cls = {'text':data_cls, 'video': torch.Tensor(1,4,3,224,224)}
-        # text_embed, _ = model(dict_cls, return_embeds=True)
-        # text_embeds = text_embed.cpu().detach()
+ 
         for i, data in tqdm.tqdm(enumerate(data_loader)):
             meta_arr.append(data['meta'])
 
-            # data['text'] = tokenizer(data['text'], return_tensors='pt', padding=True, truncation=True)
-            # data['text'] = {key: val.cuda() for key, val in data['text'].items()}
-            # print()
-            # print('-'*20)
-            # print(data['target'].shape)
-            # print('-'*20)
-            # print()
-            # print()
-            # print('-'*20)
-            # print(data['text'])
-            # print('-'*20)
-            # print()
             if isinstance(data['video'], list):
                 data['video'] = [x.to(device) for x in data['video']]
             else:
                 data['video'] = data['video'].to(device)
 
-            # try:    # for temporal
-            #     _, vid_embed, _ = model(data, return_embeds=True)
-            # except:
-            # print(data['video'].shape)
-            vid_embed = model(data['video'].permute(0,2,1,3,4))
-            # print(vid_embed.shape)
+            vid_embed, _ = model(data['video'], return_embeds=True)
 
             vid_embed_arr.append(vid_embed.cpu().detach())
             gt_arr.append(data['target'].cpu().detach())
     
     vid_embeds = torch.cat(vid_embed_arr)
-    print(vid_embeds.shape)
     gt_embeds = torch.cat(gt_arr)
-    print(gt_embeds.shape)
-    print(text_embeds.shape)
-    # torch.Size([846, 768])
-    # torch.Size([846, 157])
-    # torch.Size([157, 11, 768])
-    # raise Exception("xx")
-    sims = sim_matrix(text_embeds.float(), vid_embeds.float())
-    print(sims.shape)
+
+    sims = sim_matrix(text_embeds[:, 0, :], vid_embeds)
     sims = sims.numpy().T
     gt_embeds = gt_embeds.numpy()
     m_ap, w_ap, m_aps = charades_map(np.vstack(sims), np.vstack(gt_embeds))
@@ -250,9 +182,7 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
 
     args.add_argument('-r', '--resume',
-                      default='/nfs/wattrel/data/md0/datasets/state_aware/results/EgoClip_CF/models/0401_11_55_55/ablation6_epoch7.pth', # FT checkpoint
-                      #default='download/checkpoints/hiervl/hievl_sa.pth', #ZS checkpoint
-                      #default='download/checkpoints/hiervl/hievl_sa_2.pth', #ZS best checkpoint
+                      default='.../your_ckpt.pth',
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-gpu', '--gpu', default=0, type=str,
                       help='indices of GPUs to enable (default: all)')
