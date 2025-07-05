@@ -61,15 +61,7 @@ language_extraction/summary_feature_extractor.py
 
 ## Pretraining
 
-We use two nodes for distributed training. Each node has 4 32GB GPUs. The pretraining can be run as
-
-```bash
-python -m torch.distributed.launch  --nnodes=$HOST_NUM  --node_rank=$INDEX  --master_addr $CHIEF_IP  --nproc_per_node $HOST_GPU_NUM  --master_port 8081  run/train_egoaggregate.py --config configs/pt/egoaggregation.json
-```
-
-The instructions to run this code on SLURM are given next.
-
-## Running on SLURM cluster
+### Running on SLURM cluster
 
 To run the pretraining on a distributed SLURM system, copy the content of `slurm_scripts` to this level directly and run
 
@@ -79,7 +71,7 @@ bash mover_trainer.sh job_name
 
 The parameters of the SLURM job can be changed in the trainer.sh script. We use 2 nodes, each with 4 32 GB GPUs. The submit schedule first copies the required scripts to a different folder and then runs it from there. This copying ensures the code can be safely edited while a job is in the SLURM queue.
 
-## Running on a single machine
+### Running on a single machine
 
 Please run
 
