@@ -4,6 +4,11 @@ Official code of [What Changed and What Could Have Changed? State-Change Counter
 
 ![image](https://github.com/HCIS-Lab/state-change-counterfactual-video-pretrain/blob/main/counterfactual.gif)
 
+## TODO
+
+- [ ] Error detection on EgoPER
+- [ ] Temporal Action Segmentation on EgoPER
+
 ## Installation
 
 To create a conda environment with the required dependencies, run the following command:
