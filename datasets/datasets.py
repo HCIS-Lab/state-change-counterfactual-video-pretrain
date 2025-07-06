@@ -461,7 +461,7 @@ class AE2_FRAMES(data.Dataset):
         self.sliding_window = sliding_window
         self.convert_tensor = transforms.ToTensor()
         self.data_lst = np.load(
-            "/nfs/wattrel/data/md0/datasets/AE2/AE2_metadata.npy")
+            "path to/datasets/AE2/AE2_metadata.npy")
 
     def __getitem__(self, index):
         videoname = self.data_lst[index][0]

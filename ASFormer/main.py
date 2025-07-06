@@ -20,7 +20,7 @@ torch.backends.cudnn.deterministic = True
 parser = argparse.ArgumentParser()
 parser.add_argument('--action', default='train')
 parser.add_argument('--feature', default='cf') #cf_1e5_18b_10epoch cf_7e6_16b_epoch5
-parser.add_argument('--dataset', default="50salads")
+parser.add_argument('--dataset', default="gtea")
 parser.add_argument('--split', default='1')
 parser.add_argument('--model_dir', default='models')
 parser.add_argument('--result_dir', default='results')
@@ -66,17 +66,17 @@ if args.dataset == 'breakfast':
     num_epochs = 20
 
 
-vid_list_file = "/nfs/wattrel/data/md0/kung/state-aware-video-pretrain/data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
-vid_list_file_tst = "/nfs/wattrel/data/md0/kung/state-aware-video-pretrain/data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
-features_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/"+args.dataset+"/" +args.feature+'_split'+args.split+'/'
+vid_list_file = "path to/data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
+vid_list_file_tst = "path to /state-aware-video-pretrain/data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
+features_path = "path to/datasets/"+args.dataset+"/" +args.feature+'_split'+args.split+'/'
 if args.dataset == 'breakfast':
     features_path = features_path + 'combined_feat/'
-gt_path = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/groundTruth/"
+gt_path = "path to/data/"+args.dataset+"/groundTruth/"
  
 if args.path !=None:
     args.path =  os.path.join('models', args.feature, args.dataset, 'split_'+args.split, 'epoch-'+str(args.path)+'.model')
 
-mapping_file = "/nfs/wattrel/data/md0/datasets/action_seg_datasets/data/"+args.dataset+"/mapping.txt"
+mapping_file = "path to/data/"+args.dataset+"/mapping.txt"
  
 model_dir = os.path.join("models", args.feature, args.dataset, "split_"+args.split)
 os.makedirs(model_dir, exist_ok=True)
