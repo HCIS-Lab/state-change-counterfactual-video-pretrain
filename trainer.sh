@@ -33,4 +33,4 @@ module load ffmpeg
 # Print allocated GPUs for debugging
 echo "Allocated GPUs:"
 
-srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/agg_cf_v100.json --experiment egoaggregation
+srun python distributed_main.py --multiprocessing-distributed --config ./configs/pt/agg_cf.json --experiment egoaggregation
